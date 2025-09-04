@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@amap/amap-jsapi-loader": "^1.0.1",
+    "vue-amap": "^0.5.10"
+  }
+}
