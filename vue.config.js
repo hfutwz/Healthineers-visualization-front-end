@@ -6,6 +6,15 @@ module.exports = {
             "AMap": "AMap"
         }
     },
+    chainWebpack: config => {
+        // 添加对 SVG 使用 raw-loader
+        config.module
+            .rule('svg-raw')
+            .test(/\.svg$/)
+            .use('raw-loader')
+            .loader('raw-loader')
+            .end()
+    },
     // webpack-dev-server 相关配置
     devServer: {
         // host: "localhost",

@@ -95,7 +95,7 @@ export default {
         params.append('timePeriods', tp);
       });
       this.$axios
-        .get('/api/map/season-time-filtered', { params })
+        .get('/api/map/locations', { params })
         .then(res => {
           console.log('响应数据：', res.data);
           this.heatmapData = res.data.data || [];
@@ -122,7 +122,7 @@ export default {
       }
     },
     loadAllLocations() {
-    this.$axios.get('/api/map/alltime')
+    this.$axios.get('/api/map/locations')
       .then(res => {
         // 赋值：假设 res.data.data 是地点数组
         this.heatmapData = res.data.data || [];
@@ -135,7 +135,7 @@ export default {
   },
   mounted() {
     this.initMap();
-    this.loadAllLocations(); // 加载全部地点
+    //this.loadAllLocations(); // 加载全部地点
   },
 };
 </script>
