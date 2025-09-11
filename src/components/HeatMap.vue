@@ -2,14 +2,14 @@
   <div class="heatmap-container">
     <!-- 上方筛选框区域 -->
     <div class="filters">
-      <!-- 季节多选按钮（每个用不同颜色的按钮） -->
+      <!-- 季节多选按钮 -->
       <div class="season-box">
         <label v-for="s in seasons" :key="s.value" :style="{ backgroundColor: s.color }" class="color-btn">
           <input type="checkbox" :checked="selectedSeasons.includes(s.value)" @change="toggleSeason(s.value)"> {{s.label}}
         </label>
       </div>
       
-      <!-- 时间段多选按钮（色彩不同） -->
+      <!-- 时间段多选按钮 -->
       <div class="timeperiod-box">
         <label v-for="t in timePeriods" :key="t.value" :style="{ backgroundColor: t.color }" class="color-btn">
           <input type="checkbox" :checked="selectedTimePeriods.includes(t.value)" @change="toggleTimePeriod(t.value)"> {{t.label}}
@@ -22,22 +22,40 @@
 
     <!-- 地图显示区域 -->
     <div id="hotMap" class="map-box"></div>
+
+    <!-- 受伤人体弹窗组件 -->
+    <InjuryFigureModal 
+      v-if="showModal" 
+      :patient="currentPatient"
+      :patients="patientsData"
+      :current-index="currentPatientIndex"
+      @close="closeModal"
+      @prev="showPreviousPatient"
+      @next="showNextPatient"
+    />
   </div>
 </template>
 
 <script>
 /* global AMap */
+import InjuryFigureModal from './InjuryFigureModal.vue';
+
 export default {
+  components: {
+    InjuryFigureModal
+  },
   data() {
     return {
       map: null,
       heatmap: null,
       heatmapData: [],
-
-      // 多选数组
       selectedSeasons: [],
       selectedTimePeriods: [],
-
+      showModal: false,
+      patientsData: [],
+      currentPatientIndex: 0,
+      clickedPoint: null,
+      
       // 颜色定义
       seasons: [
         { value: 0, label: "春", color: "#77dd77" },
@@ -55,13 +73,27 @@ export default {
       ],
     }
   },
+  computed: {
+    // 当前患者
+    currentPatient() {
+      return this.patientsData[this.currentPatientIndex] || {};
+    }
+  },
   methods: {
     initMap() {
+      // 初始化地图
       this.map = new AMap.Map("hotMap", {
         resizeEnable: true,
         center: [121.4737, 31.2304],
         zoom: 11,
       });
+      
+      // 添加点击事件监听
+      this.map.on('click', (e) => {
+        this.handleMapClick(e);
+      });
+      
+      // 加载热力图插件
       this.map.plugin(["AMap.Heatmap"], () => {
         this.heatmap = new AMap.Heatmap(this.map, {
           radius: 25,
@@ -76,35 +108,87 @@ export default {
         this.query();
       });
     },
-    setHeatmapData() {
-      if (!this.heatmap) return;
-      const dataPoints = this.heatmapData.map(item => ({
-        lng: item.longitude, // 后端字段名是longitude
-        lat: item.latitude,   // 后端字段名是latitude
-        count: item.count
-      }));
-      this.heatmap.setDataSet({ data: dataPoints, max: 3 });
-    },  
+    
+    // 处理地图点击事件
+    handleMapClick(e) {
+      this.clickedPoint = {
+        lng: e.lnglat.getLng(),
+        lat: e.lnglat.getLat()
+      };
+      
+      // 请求该点的患者数据
+      this.fetchPatientData();
+    },
+    
+    // 请求患者数据
+    fetchPatientData() {
+      if (!this.clickedPoint) return;
+      
+      let params = new URLSearchParams();
+      params.append('longitude', this.clickedPoint.lng);
+      params.append('latitude', this.clickedPoint.lat);
+      
+      this.selectedSeasons.forEach(s => {
+        params.append('seasons', s);
+      });
+      
+      this.selectedTimePeriods.forEach(tp => {
+        params.append('timePeriods', tp);
+      });
+      
+      this.$axios
+        .get('/api/iss/injury/search', { params })
+        .then(res => {
+          console.log('患者数据响应：', res.data);
+          this.patientsData = res.data.data || [];
+          
+          if (this.patientsData.length > 0) {
+            this.currentPatientIndex = 0;
+            this.showModal = true;
+          } else {
+            alert('该位置没有找到患者数据');
+          }
+        })
+        .catch(err => {
+          console.error('请求患者数据失败：', err);
+          alert('获取患者数据失败');
+        });
+    },
+    
+    // 查询热力图数据
     query() {
       let params = new URLSearchParams();
 
       this.selectedSeasons.forEach(s => {
         params.append('seasons', s);
       });
+      
       this.selectedTimePeriods.forEach(tp => {
         params.append('timePeriods', tp);
       });
+      
       this.$axios
         .get('/api/map/locations', { params })
         .then(res => {
-          console.log('响应数据：', res.data);
+          console.log('热力图响应数据：', res.data);
           this.heatmapData = res.data.data || [];
           this.setHeatmapData();
         })
         .catch(err => {
-          console.error('请求失败：', err);
+          console.error('请求热力图数据失败：', err);
         });
     },
+    
+    setHeatmapData() {
+      if (!this.heatmap) return;
+      const dataPoints = this.heatmapData.map(item => ({
+        lng: item.longitude,
+        lat: item.latitude,
+        count: item.count
+      }));
+      this.heatmap.setDataSet({ data: dataPoints, max: 3 });
+    },
+    
     toggleSeason(val) {
       const index = this.selectedSeasons.indexOf(val);
       if (index >= 0) {
@@ -113,6 +197,7 @@ export default {
         this.selectedSeasons.push(val);
       }
     },
+    
     toggleTimePeriod(val) {
       const index = this.selectedTimePeriods.indexOf(val);
       if (index >= 0) {
@@ -121,21 +206,32 @@ export default {
         this.selectedTimePeriods.push(val);
       }
     },
-    loadAllLocations() {
-    this.$axios.get('/api/map/locations')
-      .then(res => {
-        // 赋值：假设 res.data.data 是地点数组
-        this.heatmapData = res.data.data || [];
-        this.setHeatmapData();
-      })
-      .catch(err => {
-        console.error('加载全部地点失败：', err);
-      });
+    
+    // 弹窗相关方法
+    closeModal() {
+      this.showModal = false;
     },
+    
+    showPreviousPatient() {
+      if (this.currentPatientIndex > 0) {
+        this.currentPatientIndex--;
+      } else {
+        // 循环到最后一个
+        this.currentPatientIndex = this.patientsData.length - 1;
+      }
+    },
+    
+    showNextPatient() {
+      if (this.currentPatientIndex < this.patientsData.length - 1) {
+        this.currentPatientIndex++;
+      } else {
+        // 循环到第一个
+        this.currentPatientIndex = 0;
+      }
+    }
   },
   mounted() {
     this.initMap();
-    //this.loadAllLocations(); // 加载全部地点
   },
 };
 </script>
@@ -184,4 +280,3 @@ button:hover {
   transition: all 0.2s;
 }
 </style>
-

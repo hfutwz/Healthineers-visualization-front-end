@@ -24,11 +24,24 @@
         <div v-else class="modal-body">
           <!-- 受伤等级展示 -->
           <div class="injury-summary">
-            <div class="severity-indicator" :class="'severity-' + injurySeverity">
-            <div class="severity-info">
-                <span class="severity-text">损伤等级：{{ severityText }}</span>
-                <span class="iss-score">ISS评分：{{ issScore }}</span>
+            <div class="severity-indicator" :class="'severity-' + patient.injurySeverity">
+              <div class="severity-info">
+                  <span class="severity-text">损伤等级：{{ severityText }}</span>
+                  <span class="iss-score">ISS评分：{{ patient.issScore }}</span>
+              </div>
             </div>
+            
+            <!-- 患者轮播指示器 -->
+            <div class="patient-carousel-indicator" v-if="patients.length > 1">
+              <span class="indicator-text">患者 {{ currentIndex + 1 }} / {{ patients.length }}</span>
+              <div class="indicator-dots">
+                <span 
+                  v-for="(p, index) in patients" 
+                  :key="p.patientId" 
+                  :class="['dot', { active: index === currentIndex }]"
+                  @click="$emit('goto', index)"
+                ></span>
+              </div>
             </div>
             
             <div class="color-legend">
@@ -45,8 +58,7 @@
           <!-- SVG人体图和部位详情 -->
           <div class="injury-details">
             <div class="svg-container">
-              <!-- 修复：添加明确的尺寸和边框用于调试 -->
-              <div ref="svgContainer" class="human-figure" style="min-height: 300px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center;">
+              <div ref="svgContainer" class="human-figure">
                 <p v-if="!svgLoaded" class="svg-placeholder">加载人体图中...</p>
               </div>
             </div>
@@ -70,6 +82,16 @@
         </div>
 
         <div class="modal-footer">
+          <!-- 轮播导航按钮 -->
+          <div class="carousel-nav" v-if="patients.length > 1">
+            <button class="nav-btn prev" @click="$emit('prev')" :disabled="patients.length <= 1">
+              <i class="fas fa-chevron-left"></i> 上一个
+            </button>
+            <button class="nav-btn next" @click="$emit('next')" :disabled="patients.length <= 1">
+              下一个 <i class="fas fa-chevron-right"></i>
+            </button>
+          </div>
+          
           <button class="btn-close" @click="closeModal">关闭</button>
         </div>
       </div>
@@ -82,10 +104,15 @@ export default {
   props: {
     patient: {
       type: Object,
-      required: true,
-      validator: value => {
-        return value && value.patientId;
-      }
+      required: true
+    },
+    patients: {
+      type: Array,
+      default: () => []
+    },
+    currentIndex: {
+      type: Number,
+      default: 0
     }
   },
   data() {
@@ -98,13 +125,11 @@ export default {
         limbs: 0,
         body: 0
       },
-      issScore: null,
-      injurySeverity: 0,
-      loading: true,
+      loading: false,
       error: false,
       errorMessage: '',
       highlightedPart: null,
-      svgLoaded: false, // 新增：跟踪SVG加载状态
+      svgLoaded: false,
       // SVG字符串占位符 - 实际使用时替换为完整SVG
       svgStr: `<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
         <!-- 简化的SVG内容，实际使用时替换为完整SVG -->
@@ -227,7 +252,7 @@ c0-20.855,2.907-41.609,8.636-61.662
   computed: {
     severityText() {
       const texts = ['轻伤', '重伤', '严重'];
-      return texts[this.injurySeverity] || '未知';
+      return texts[this.patient.injurySeverity] || '未知';
     }
   },
   methods: {
@@ -247,27 +272,36 @@ c0-20.855,2.907-41.609,8.636-61.662
       this.$emit('close');
     },
     loadAndColorSVG() {
+      // 先重置加载状态
+      this.svgLoaded = false;
+      
       const container = this.$refs.svgContainer;
       if (!container) {
         console.error("SVG容器未找到");
         return;
       }
       
+      // 清空容器内容
+      container.innerHTML = '';
+      
       try {
-        // 插入SVG字符串
-        container.innerHTML = this.svgStr;
-        const svgEl = container.querySelector('svg');
+        // 创建临时div来解析SVG字符串
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = this.svgStr;
         
-        if (!svgEl) {
+        // 获取SVG元素
+        this.svgElement = tempDiv.querySelector('svg');
+        
+        if (!this.svgElement) {
           console.error("SVG元素未创建成功");
           return;
         }
 
-        // 设置SVG样式 - 修复：确保SVG有明确的尺寸
-        svgEl.style.width = '100%';
-        svgEl.style.height = '100%';
-        svgEl.style.display = 'block';
-        svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        // 设置SVG样式
+        this.svgElement.style.width = '100%';
+        this.svgElement.style.height = '100%';
+        this.svgElement.style.display = 'block';
+        this.svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
 
         const getItemColor = (level) => {
           return this.getGradientColor(level);
@@ -284,99 +318,154 @@ c0-20.855,2.907-41.609,8.636-61.662
         ];
 
         parts.forEach(part => {
-          const elements = svgEl.querySelectorAll(`.${part.className}`);
+          const elements = this.svgElement.querySelectorAll(`.${part.className}`);
           elements.forEach(el => {
             el.setAttribute('fill', getItemColor(part.level));
-            // 添加交互效果
-            el.addEventListener('mouseenter', () => this.highlightPart(part.className));
-            el.addEventListener('mouseleave', this.unhighlightPart);
+            // 添加交互效果 - 使用数据属性标记部位
+            el.dataset.part = part.className;
           }); 
         });
+        
+        // 将SVG添加到容器
+        container.appendChild(this.svgElement);
+        
+        // 使用事件委托处理SVG交互
+        container.addEventListener('mouseover', this.handleSvgMouseOver);
+        container.addEventListener('mouseout', this.handleSvgMouseOut);
         
         this.svgLoaded = true;
         console.log("SVG加载完成");
       } catch (e) {
         console.error("加载SVG时出错:", e);
+        // 显示错误信息
+        container.innerHTML = '<p class="svg-error">加载人体图失败</p>';
       }
-    },
-    fetchInjuryData() {
-      this.loading = true;
-      this.error = false;
-      this.svgLoaded = false;
-      
-      // 发送请求
-      this.$axios.get(`/api/iss/injury/${this.patient.patientId}`)
-        .then(res => {
-          const data = res.data.data;
-          if (data) {
-            this.injuryLevels.neck = data.headNeck;
-            this.injuryLevels.face = data.face;
-            this.injuryLevels.chest = data.chest;
-            this.injuryLevels.abdomen = data.abdomen;
-            this.injuryLevels.limbs = data.limbs;
-            this.injuryLevels.body = data.body;
-            this.injurySeverity = data.injurySeverity;
-            this.issScore = data.issScore; 
-            
-            // 修复：确保DOM更新完成后再加载SVG
-            this.$nextTick(() => {
-              setTimeout(() => {
-                this.loadAndColorSVG();
-              }, 100);
-            });
-          } else {
-            this.error = true;
-            this.errorMessage = '未找到该患者的创伤信息';
-          }
-          this.loading = false;
-        })
-        .catch(err => {
-          console.error('请求伤情信息失败', err);
-          this.error = true;
-          this.errorMessage = '获取创伤信息失败，请检查网络连接';
-          this.loading = false;
-        });
     },
     highlightPart(part) {
       this.highlightedPart = part;
       
-      // 高亮SVG中的对应部位
-      const svgEl = this.$refs.svgContainer.querySelector('svg');
-      if (svgEl) {
-        const elements = svgEl.querySelectorAll(`.${part}`);
-        elements.forEach(el => {
-          el.style.filter = 'brightness(1.2) drop-shadow(0 0 4px rgba(255, 255, 255, 0.8))';
-        });
+      // 高亮SVG中的对应部位 - 添加null检查
+      if (this.svgElement && this.svgElement.querySelectorAll) {
+        try {
+          const elements = this.svgElement.querySelectorAll(`.${part}`);
+          elements.forEach(el => {
+            el.style.filter = 'brightness(1.2) drop-shadow(0 0 4px rgba(255, 255, 255, 0.8))';
+          });
+        } catch (error) {
+          console.error("高亮部位时出错:", error);
+        }
       }
     },
     unhighlightPart() {
       this.highlightedPart = null;
       
-      // 移除SVG高亮
-      const svgEl = this.$refs.svgContainer.querySelector('svg');
-      if (svgEl) {
-        const elements = svgEl.querySelectorAll('*');
-        elements.forEach(el => {
-          el.style.filter = '';
-        });
+      // 移除SVG高亮 - 添加null检查
+      if (this.svgElement && this.svgElement.querySelectorAll) {
+        try {
+          const elements = this.svgElement.querySelectorAll('*');
+          elements.forEach(el => {
+            el.style.filter = '';
+          });
+        } catch (error) {
+          console.error("取消高亮时出错:", error);
+        }
       }
+    },
+    updateInjuryLevels() {
+      // 根据当前患者数据更新受伤等级
+      this.injuryLevels = {
+        neck: this.patient.headNeck || 0,
+        face: this.patient.face || 0,
+        chest: this.patient.chest || 0,
+        abdomen: this.patient.abdomen || 0,
+        limbs: this.patient.limbs || 0,
+        body: this.patient.body || 0
+      };
+      
+      // 重置SVG加载状态
+      this.svgLoaded = false;
+      
+      // 更新SVG
+      this.$nextTick(() => {
+        this.loadAndColorSVG();
+      });
     }
-  },
-  mounted() {
-    this.fetchInjuryData();
   },
   watch: {
     patient: {
       handler() {
-        this.fetchInjuryData();
+        this.updateInjuryLevels();
       },
-      deep: true
+      deep: true,
+      immediate: true
     }
+  },
+  mounted() {
+    this.updateInjuryLevels();
   }
 };
 </script>
 
 <style scoped>
+/* 添加轮播指示器样式 */
+.patient-carousel-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.indicator-text {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.indicator-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #ddd;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.dot.active {
+  background-color: #3498db;
+}
+
+.dot:hover {
+  background-color: #2980b9;
+}
+
+/* 轮播导航按钮 */
+.carousel-nav {
+  display: flex;
+  gap: 10px;
+}
+
+.nav-btn {
+  padding: 8px 15px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nav-btn:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+}
+
 /* 弹窗遮罩样式 */
 .modal-overlay {
   position: fixed;

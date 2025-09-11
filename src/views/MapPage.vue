@@ -5,7 +5,6 @@
         <li @click="currentModule='HeatMap'">热力图-病例-按季节</li>
         <li @click="currentModule='MapDataAnimation'">热力图-病例-按日期</li>
         <li @click="currentModule='PatientList'">热力图-病人信息</li>
-        <li @click="currentModule='BodyShow'">人体构造图测试</li>
         <li @click="currentModule='Other'">其他模块</li>
       </ul>
     </div>
@@ -19,7 +18,6 @@
 import MapDataAnimation from '@/components/MapDataAnimation.vue' 
 import HeatMap from '../components/HeatMap.vue'
 import PatientList from '../components/PatientList.vue'
-import BodyShow from '@/components/BodyShow.vue'
 // 可以加入其他组件
 export default {
   data() {
@@ -36,8 +34,6 @@ export default {
           return 'MapDataAnimation'
         case 'PatientList':
           return 'PatientList'
-        case 'BodyShow':
-          return 'BodyShow'
         case 'Other':
           return 'div' // 将来可以放“Other”组件
         default:
@@ -49,7 +45,6 @@ export default {
     HeatMap,
     MapDataAnimation,
     PatientList,
-    BodyShow
   }
 }
 </script>
