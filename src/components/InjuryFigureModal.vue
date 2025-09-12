@@ -1,106 +1,128 @@
 <template>
-  <transition name="modal-fade">
-    <div class="modal-overlay" @click.self="closeModal">
-      <div class="modal-content">
-        <!-- 标题和关闭按钮 -->
-        <div class="modal-header">
-          <h3>病人受伤人体图 (ID: {{ patient.patientId }})</h3>
-          <button class="close-btn" @click="closeModal">&times;</button>
-        </div>
+  <div>
+    <transition name="modal-fade">
+      <div v-if="visible" class="modal-overlay" @click.self="closeModal">
+        <div class="modal-content">
+          <!-- 标题和关闭按钮 -->
+          <div class="modal-header">
+            <h3>病人受伤人体图 (ID: {{ patient.patientId }})</h3>
+            <button class="close-btn" @click="closeModal">&times;</button>
+          </div>
 
-        <!-- 加载状态 -->
-        <div v-if="loading" class="loading-container">
-          <div class="spinner"></div>
-          <p>加载伤情信息中...</p>
-        </div>
+          <!-- 加载状态 -->
+          <div v-if="loading" class="loading-container">
+            <div class="spinner"></div>
+            <p>加载伤情信息中...</p>
+          </div>
 
-        <!-- 错误状态 -->
-        <div v-else-if="error" class="error-container">
-          <p>⚠️ {{ errorMessage }}</p>
-          <button @click="fetchInjuryData">重试</button>
-        </div>
+          <!-- 错误状态 -->
+          <div v-else-if="error" class="error-container">
+            <p>⚠️ {{ errorMessage }}</p>
+            <button @click="fetchInjuryData">重试</button>
+          </div>
 
-        <!-- 内容区域 -->
-        <div v-else class="modal-body">
-          <!-- 受伤等级展示 -->
-          <div class="injury-summary">
-            <div class="severity-indicator" :class="'severity-' + patient.injurySeverity">
-              <div class="severity-info">
-                  <span class="severity-text">损伤等级：{{ severityText }}</span>
-                  <span class="iss-score">ISS评分：{{ patient.issScore }}</span>
-              </div>
+          <!-- 内容区域 -->
+          <div v-else class="modal-body">
+            <!-- 操作按钮区域 -->
+            <div class="action-buttons">
+              <button class="btn-timeline" @click="showTimeline">
+                <i class="el-icon-time"></i>
+                查看干预时间线
+              </button>
             </div>
             
-            <!-- 患者轮播指示器 -->
-            <div class="patient-carousel-indicator" v-if="patients.length > 1">
-              <span class="indicator-text">患者 {{ currentIndex + 1 }} / {{ patients.length }}</span>
-              <div class="indicator-dots">
-                <span 
-                  v-for="(p, index) in patients" 
-                  :key="p.patientId" 
-                  :class="['dot', { active: index === currentIndex }]"
-                  @click="$emit('goto', index)"
-                ></span>
+            <!-- 受伤等级展示 -->
+            <div class="injury-summary">
+              <div class="severity-indicator" :class="'severity-' + patient.injurySeverity">
+                <div class="severity-info">
+                    <span class="severity-text">损伤等级：{{ severityText }}</span>
+                    <span class="iss-score">ISS评分：{{ patient.issScore }}</span>
+                </div>
+              </div>
+            
+              <div class="color-legend">
+                <h4>创伤等级颜色指示</h4>
+                <div class="legend-items">
+                  <div v-for="i in 7" :key="i" class="legend-item">
+                    <span class="color-box" :style="{ backgroundColor: getGradientColor(i-1) }"></span>
+                    <span class="level-label">等级 {{ i-1 }}</span>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <div class="color-legend">
-              <h4>创伤等级颜色指示</h4>
-              <div class="legend-items">
-                <div v-for="i in 7" :key="i" class="legend-item">
-                  <span class="color-box" :style="{ backgroundColor: getGradientColor(i-1) }"></span>
-                  <span class="level-label">等级 {{ i-1 }}</span>
+
+            <!-- SVG人体图和部位详情 -->
+            <div class="injury-details">
+              <div class="svg-container">
+                <div ref="svgContainer" class="human-figure">
+                  <p v-if="!svgLoaded" class="svg-placeholder">加载人体图中...</p>
+                </div>
+              </div>
+              
+              <div class="injury-levels">
+                <div 
+                  v-for="(level, partName) in injuryLevels" 
+                  :key="partName" 
+                  class="injury-item"
+                  :class="{ highlighted: highlightedPart === partName }"
+                  @mouseenter="highlightPart(partName)"
+                  @mouseleave="unhighlightPart"
+                >
+                  <span class="part-name">{{ partNames[partName] }}:</span>
+                  <span class="part-level" :style="{ color: getGradientColor(level) }">
+                    {{ level }} ({{ getLevelDescription(level) }})
+                  </span>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- SVG人体图和部位详情 -->
-          <div class="injury-details">
-            <div class="svg-container">
-              <div ref="svgContainer" class="human-figure">
-                <p v-if="!svgLoaded" class="svg-placeholder">加载人体图中...</p>
-              </div>
+          <div class="modal-footer">
+            <!-- 轮播导航按钮 -->
+            <div class="carousel-nav" v-if="patients.length > 1">
+              <button class="nav-btn prev" @click="$emit('prev')" :disabled="patients.length <= 1">
+                <i class="fas fa-chevron-left"></i> 上一个
+              </button>
+              <button class="nav-btn next" @click="$emit('next')" :disabled="patients.length <= 1">
+                下一个 <i class="fas fa-chevron-right"></i>
+              </button>
             </div>
-            
-            <div class="injury-levels">
-              <div 
-                v-for="(level, part) in injuryLevels" 
-                :key="part" 
-                class="injury-item"
-                :class="{ highlighted: highlightedPart === part }"
-                @mouseenter="highlightPart(part)"
-                @mouseleave="unhighlightPart"
-              >
-                <span class="part-name">{{ partNames[part] }}:</span>
-                <span class="part-level" :style="{ color: getGradientColor(level) }">
-                  {{ level }} ({{ getLevelDescription(level) }})
-                </span>
-              </div>
-            </div>
+              <!-- 患者轮播指示器 -->
+              <div class="patient-carousel-indicator" v-if="patients.length > 1">
+                <span class="indicator-text">患者 {{ currentIndex + 1 }} / {{ patients.length }}</span>
+                <div class="indicator-dots">
+                  <span 
+                    v-for="(p, index) in patients" 
+                    :key="p.patientId" 
+                    :class="['dot', { active: index === currentIndex }]"
+                    @click="$emit('goto', index)"
+                  ></span>
+                </div>
+              </div>        
+            <button class="btn-close" @click="closeModal">关闭</button>
           </div>
-        </div>
-
-        <div class="modal-footer">
-          <!-- 轮播导航按钮 -->
-          <div class="carousel-nav" v-if="patients.length > 1">
-            <button class="nav-btn prev" @click="$emit('prev')" :disabled="patients.length <= 1">
-              <i class="fas fa-chevron-left"></i> 上一个
-            </button>
-            <button class="nav-btn next" @click="$emit('next')" :disabled="patients.length <= 1">
-              下一个 <i class="fas fa-chevron-right"></i>
-            </button>
-          </div>
-          
-          <button class="btn-close" @click="closeModal">关闭</button>
         </div>
       </div>
-    </div>
-  </transition>
+    </transition>
+
+    <!-- 时间线弹窗 -->
+    <intervention-timeline-dialog
+      v-if="showTimelineDialog"
+      :local-data="timelineData"
+      @close="closeTimelineDialog"
+    />
+  </div>
 </template>
 
 <script>
+// 导入时间线组件
+import InterventionTimelineDialog from './InterventionTimelineDialog.vue';
+
 export default {
+  // 注册组件
+  components: {
+    InterventionTimelineDialog
+  },
   props: {
     patient: {
       type: Object,
@@ -117,6 +139,7 @@ export default {
   },
   data() {
     return {
+      visible: true,
       injuryLevels: {
         neck: 0,
         face: 0,
@@ -246,7 +269,12 @@ c0-20.855,2.907-41.609,8.636-61.662
         abdomen: '腹部',
         limbs: '四肢',
         body: '体表'
-      }
+      },
+      // 添加缺失的数据属性
+      showTimelineDialog: false,
+      timelineData: {},
+      timelineLoading: false,
+      svgElement: null,
     };
   },
   computed: {
@@ -269,85 +297,120 @@ c0-20.855,2.907-41.609,8.636-61.662
       return descriptions[level] || '未知';
     },
     closeModal() {
+      this.visible = false;
       this.$emit('close');
     },
-    loadAndColorSVG() {
-      // 先重置加载状态
-      this.svgLoaded = false;
+    // 添加缺失的方法实现
+    showTimeline() {
+      this.timelineLoading = true;
       
+      // 调用API获取干预时间线数据
+      const url = `/api/intervention/patient/${this.patient.patientId}`;
+      this.$axios.get(url)
+        .then(res => {
+          console.log('干预数据:', res.data);
+          
+          // 确保我们获取的是对象而不是数组
+          if (Array.isArray(res.data.data) && res.data.data.length > 0) {
+            this.timelineData = res.data.data[0];
+          } else if (typeof res.data.data === 'object') {
+            this.timelineData = res.data.data;
+          } else {
+            this.timelineData = {};
+          }
+          
+          this.showTimelineDialog = true;
+        })
+        .catch(err => {
+          console.error('请求干预时间失败', err);
+          this.$message.error('获取干预时间失败');
+        })
+        .finally(() => {
+          this.timelineLoading = false;
+        });
+    },
+    
+    closeTimelineDialog() {
+      this.showTimelineDialog = false;
+    },
+    updateSVGColors() {
+      if (!this.svgElement) return;
+
+      const levelMap = {
+        face: this.injuryLevels.face,
+        neck: this.injuryLevels.neck,
+        chest: this.injuryLevels.chest,
+        abdomen: this.injuryLevels.abdomen,
+        limbs: this.injuryLevels.limbs,
+        body: this.injuryLevels.body
+      };
+
+      const getColor = (level) => this.getGradientColor(level);
+
+      for (const part in levelMap) {
+        const elements = this.svgElement.querySelectorAll(`.${part}`);
+        elements.forEach(el => {
+          el.setAttribute('fill', getColor(levelMap[part]));
+        });
+      }
+    },
+
+    // 以下是原有方法，需要保留但未在提供的代码片段中显示
+    loadAndColorSVG() {
+      this.svgLoaded = false;
+
       const container = this.$refs.svgContainer;
       if (!container) {
         console.error("SVG容器未找到");
         return;
       }
-      
+
       // 清空容器内容
       container.innerHTML = '';
-      
+
       try {
-        // 创建临时div来解析SVG字符串
+        // 创建临时div解析SVG字符串
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = this.svgStr;
-        
-        // 获取SVG元素
-        this.svgElement = tempDiv.querySelector('svg');
-        
-        if (!this.svgElement) {
+        const svgEl = tempDiv.querySelector('svg');
+
+        if (!svgEl) {
           console.error("SVG元素未创建成功");
           return;
         }
 
-        // 设置SVG样式
-        this.svgElement.style.width = '100%';
-        this.svgElement.style.height = '100%';
-        this.svgElement.style.display = 'block';
-        this.svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        // 设置样式
+        svgEl.style.width = '100%';
+        svgEl.style.height = '100%';
+        svgEl.style.display = 'block';
+        svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
 
-        const getItemColor = (level) => {
-          return this.getGradientColor(level);
-        };
+        // 存储SVG DOM
+        this.svgElement = svgEl;
 
-        // 定义各部位对应的class名
-        const parts = [
-          { className: 'face', level: this.injuryLevels.face },
-          { className: 'neck', level: this.injuryLevels.neck },
-          { className: 'chest', level: this.injuryLevels.chest },
-          { className: 'abdomen', level: this.injuryLevels.abdomen },
-          { className: 'limbs', level: this.injuryLevels.limbs },
-          { className: 'body', level: this.injuryLevels.body }
-        ];
-
-        parts.forEach(part => {
-          const elements = this.svgElement.querySelectorAll(`.${part.className}`);
-          elements.forEach(el => {
-            el.setAttribute('fill', getItemColor(part.level));
-            // 添加交互效果 - 使用数据属性标记部位
-            el.dataset.part = part.className;
-          }); 
-        });
+        // 着色
+        this.updateSVGColors();
         
-        // 将SVG添加到容器
-        container.appendChild(this.svgElement);
-        
-        // 使用事件委托处理SVG交互
+        // 附加到容器
+        container.appendChild(svgEl);
+
+        // 绑定事件（悬停）
         container.addEventListener('mouseover', this.handleSvgMouseOver);
         container.addEventListener('mouseout', this.handleSvgMouseOut);
-        
+
         this.svgLoaded = true;
-        console.log("SVG加载完成");
       } catch (e) {
-        console.error("加载SVG时出错:", e);
-        // 显示错误信息
+        console.error("加载SVG出错：", e);
         container.innerHTML = '<p class="svg-error">加载人体图失败</p>';
       }
     },
-    highlightPart(part) {
-      this.highlightedPart = part;
+    highlightPart(partName) {
+      this.highlightedPart = partName;
       
       // 高亮SVG中的对应部位 - 添加null检查
       if (this.svgElement && this.svgElement.querySelectorAll) {
         try {
-          const elements = this.svgElement.querySelectorAll(`.${part}`);
+          const elements = this.svgElement.querySelectorAll(`.${partName}`);
           elements.forEach(el => {
             el.style.filter = 'brightness(1.2) drop-shadow(0 0 4px rgba(255, 255, 255, 0.8))';
           });
@@ -372,7 +435,7 @@ c0-20.855,2.907-41.609,8.636-61.662
       }
     },
     updateInjuryLevels() {
-      // 根据当前患者数据更新受伤等级
+      // 更新等级
       this.injuryLevels = {
         neck: this.patient.headNeck || 0,
         face: this.patient.face || 0,
@@ -381,14 +444,14 @@ c0-20.855,2.907-41.609,8.636-61.662
         limbs: this.patient.limbs || 0,
         body: this.patient.body || 0
       };
-      
-      // 重置SVG加载状态
+      // 重新加载SVG
       this.svgLoaded = false;
-      
-      // 更新SVG
       this.$nextTick(() => {
         this.loadAndColorSVG();
       });
+    },
+    fetchInjuryData() {
+      // 实现获取伤情数据逻辑
     }
   },
   watch: {
@@ -407,105 +470,75 @@ c0-20.855,2.907-41.609,8.636-61.662
 </script>
 
 <style scoped>
-/* 添加轮播指示器样式 */
-.patient-carousel-indicator {
+/* 操作按钮区域 */
+.action-buttons {
   display: flex;
-  flex-direction: column;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+  padding: 0 10px;
+}
+
+.btn-timeline {
+  display: flex;
   align-items: center;
-  margin: 10px 0;
-}
-
-.indicator-text {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 8px;
-}
-
-.indicator-dots {
-  display: flex;
-  gap: 8px;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: #ddd;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.dot.active {
-  background-color: #3498db;
-}
-
-.dot:hover {
-  background-color: #2980b9;
-}
-
-/* 轮播导航按钮 */
-.carousel-nav {
-  display: flex;
-  gap: 10px;
-}
-
-.nav-btn {
-  padding: 8px 15px;
-  background-color: #3498db;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #409EFF 0%, #64b5ff 100%);
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
+  font-weight: 500;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
 }
 
-.nav-btn:disabled {
-  background-color: #bdc3c7;
-  cursor: not-allowed;
+.btn-timeline:hover {
+  background: linear-gradient(135deg, #64b5ff 0%, #409EFF 100%);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4);
+  transform: translateY(-2px);
 }
 
-/* 弹窗遮罩样式 */
+.btn-timeline i {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+/* 其他样式保持不变 */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.6);
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   z-index: 1000;
 }
 
-/* 弹窗内容样式 */
 .modal-content {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  background-color: white;
+  border-radius: 8px;
   width: 90%;
-  max-width: 800px;
+  max-width: 1000px;
   max-height: 90vh;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
-/* 弹窗头部 */
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #eee;
+  padding: 15px 20px;
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .modal-header h3 {
   margin: 0;
-  color: #2c3e50;
-  font-size: 1.4rem;
+  font-size: 18px;
 }
 
 .close-btn {
@@ -514,40 +547,251 @@ c0-20.855,2.907-41.609,8.636-61.662
   font-size: 24px;
   cursor: pointer;
   color: #999;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
 }
 
 .close-btn:hover {
-  background-color: #f5f5f5;
   color: #333;
 }
 
-/* 弹窗主体 */
 .modal-body {
-  padding: 20px;
   flex: 1;
+  overflow-y: auto;
+  padding: 20px;
 }
 
-/* 加载状态 */
-.loading-container {
+.injury-summary {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.severity-indicator {
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  flex: 1;
+  min-width: 250px;
+  margin-right: 20px;
+}
+
+.severity-0 {
+  background-color: #f0f9ff;
+  border-left: 4px solid #409EFF;
+}
+
+.severity-1 {
+  background-color: #fef6e7;
+  border-left: 4px solid #e6a23c;
+}
+
+.severity-2 {
+  background-color: #fef0f0;
+  border-left: 4px solid #f56c6c;
+}
+
+.severity-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.severity-text {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.iss-score {
+  font-size: 14px;
+  color: #606266;
+}
+
+.color-legend {
+  flex: 1;
+  min-width: 250px;
+}
+
+.color-legend h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #606266;
+}
+
+.legend-items {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+}
+
+.color-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  margin-right: 6px;
+}
+
+.level-label {
+  font-size: 12px;
+  color: #606266;
+}
+
+.injury-details {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.svg-container {
+  flex: 1;
+  min-width: 300px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #f9f9f9;
+}
+
+.human-figure {
+  width: 100%;
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.svg-placeholder {
+  color: #909399;
+  font-style: italic;
+}
+
+.injury-levels {
+  flex: 1;
+  min-width: 200px;
+}
+
+.injury-item {
+  padding: 10px 15px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  background-color: #f9f9f9;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.injury-item:hover {
+  background-color: #f0f0f0;
+}
+
+.injury-item.highlighted {
+  background-color: #ecf5ff;
+  border-left: 3px solid #409EFF;
+}
+
+.part-name {
+  font-weight: 500;
+  margin-right: 8px;
+}
+
+.part-level {
+  font-weight: 600;
+}
+
+.modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.carousel-nav {
+  display: flex;
+  gap: 10px;
+}
+
+.nav-btn {
+  padding: 8px 12px;
+  background-color: #f5f7fa;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background-color: #ecf5ff;
+  border-color: #409EFF;
+  color: #409EFF;
+}
+
+.nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.patient-carousel-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.indicator-text {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 5px;
+}
+
+.indicator-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #dcdfe6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dot.active {
+  background-color: #409EFF;
+  transform: scale(1.2);
+}
+
+.btn-close {
+  padding: 8px 16px;
+  background-color: #f56c6c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-close:hover {
+  background-color: #f78989;
+}
+
+.loading-container,
+.error-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 40px 20px;
 }
 
 .spinner {
   width: 40px;
   height: 40px;
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #3498db;
+  border-top: 4px solid #409EFF;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 15px;
@@ -558,223 +802,50 @@ c0-20.855,2.907-41.609,8.636-61.662
   100% { transform: rotate(360deg); }
 }
 
-/* 错误状态 */
-.error-container {
-  text-align: center;
-  padding: 40px;
-}
-
-.error-container p {
-  color: #e74c3c;
-  margin-bottom: 20px;
-}
-
-/* 受伤摘要 */
-.injury-summary {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 15px;
-}
-
-.severity-indicator {
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-weight: bold;
-  color: white;
-}
-
-.severity-0 { background-color: #2ecc71; }
-.severity-1 { background-color: #f39c12; }
-.severity-2 { background-color: #e74c3c; }
-.severity-3 { background-color: #8e44ad; }
-
-/* 颜色图例 */
-.color-legend {
-  background: #f9f9f9;
-  padding: 12px;
-  border-radius: 8px;
-}
-
-.color-legend h4 {
-  margin: 0 0 10px 0;
-  font-size: 0.9rem;
-  color: #7f8c8d;
-}
-
-.legend-items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  margin-right: 10px;
-}
-
-.color-box {
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
-  margin-right: 5px;
-  border: 1px solid #ddd;
-}
-
-.level-label {
-  font-size: 0.8rem;
-  color: #555;
-}
-
-/* 受伤详情区域 */
-.injury-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-.svg-container {
-  flex: 1;
-  min-width: 300px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-/* 修复：确保SVG容器有明确的尺寸 */
-.human-figure {
-  width: 100%;
-  height: 300px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.svg-placeholder {
-  color: #999;
-  font-style: italic;
-}
-
-.injury-levels {
-  flex: 1;
-  min-width: 250px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.injury-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 15px;
-  border-radius: 6px;
-  background-color: #f9f9f9;
-  transition: all 0.2s ease;
-}
-
-.injury-item.highlighted {
-  background-color: #e3f2fd;
-  transform: translateX(5px);
-}
-
-.part-name {
-  font-weight: bold;
-  color: #34495e;
-}
-
-.part-level {
-  font-weight: bold;
-}
-
-/* 弹窗底部 */
-.modal-footer {
-  padding: 15px 20px;
-  border-top: 1px solid #eee;
-  text-align: right;
-}
-
-.btn-close {
-  padding: 8px 20px;
-  background-color: #3498db;
+.error-container button {
+  margin-top: 15px;
+  padding: 8px 16px;
+  background-color: #409EFF;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.2s;
 }
 
-.btn-close:hover {
-  background-color: #2980b9;
-}
-
-/* 动画效果 */
-.modal-fade-enter-active, .modal-fade-leave-active {
-  transition: opacity 0.3s;
-}
-
-.modal-fade-enter, .modal-fade-leave-to {
-  opacity: 0;
-}
-
-.modal-fade-enter-active .modal-content,
-.modal-fade-leave-active .modal-content {
-  transition: transform 0.3s;
-}
-
-.modal-fade-enter .modal-content,
-.modal-fade-leave-to .modal-content {
-  transform: scale(0.95);
-}
-.severity-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  font-size: 0.9rem;
-  font-weight: normal;
-  color: #fff;
-  margin-top: 5px;
-}
-
-.severity-text {
-  font-weight: bold;
-  margin-bottom: 3px;
-}
-
-.iss-score {
-  font-size: 0.85rem;
-  color: #eee;
-}
-
-/* 响应式设计 */
+/* 响应式调整 */
 @media (max-width: 768px) {
-  .modal-content {
-    width: 95%;
-    margin: 10px;
-  }
-  
-  .injury-summary {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
   .injury-details {
     flex-direction: column;
   }
   
-  .svg-container {
+  .injury-summary {
+    flex-direction: column;
+  }
+  
+  .severity-indicator {
+    margin-right: 0;
+    margin-bottom: 15px;
+  }
+  
+  .legend-items {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .carousel-nav {
     order: 2;
   }
   
-  .injury-levels {
+  .patient-carousel-indicator {
     order: 1;
   }
   
-  .human-figure {
-    height: 250px;
+  .btn-close {
+    order: 3;
   }
 }
 </style>
