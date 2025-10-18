@@ -68,10 +68,16 @@
                   @mouseenter="highlightPart(partName)"
                   @mouseleave="unhighlightPart"
                 >
-                  <span class="part-name">{{ partNames[partName] }}:</span>
-                  <span class="part-level" :style="{ color: getGradientColor(level) }">
-                    {{ level }} ({{ getLevelDescription(level) }})
-                  </span>
+                  <div class="injury-item-header">
+                    <span class="part-name">{{ partNames[partName] }}:</span>
+                    <span class="part-level" :style="{ color: getGradientColor(level) }">
+                      {{ level }} ({{ getLevelDescription(level) }})
+                    </span>
+                  </div>
+                  <!-- 显示详细伤情信息 -->
+                  <div v-if="getInjuryDetails(partName)" class="injury-details">
+                    <div class="details-content" v-html="getInjuryDetails(partName)"></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -295,6 +301,52 @@ c0-20.855,2.907-41.609,8.636-61.662
     getLevelDescription(level) {
       const descriptions = ['无', '轻微', '轻度', '中度', '较重', '严重', '危重'];
       return descriptions[level] || '未知';
+    },
+    getInjuryDetails(partName) {
+      // 根据部位名称获取对应的详细伤情信息
+      const detailsMap = {
+        neck: this.patient.headNeckDetails,
+        face: this.patient.faceDetails,
+        chest: this.patient.chestDetails,
+        abdomen: this.patient.abdomenDetails,
+        limbs: this.patient.limbsDetails,
+        body: this.patient.bodyDetails
+      };
+      
+      const details = detailsMap[partName];
+      if (!details || details.trim() === '') {
+        return null;
+      }
+      
+      // 格式化显示详细伤情信息
+      return this.formatInjuryDetails(details);
+    },
+    formatInjuryDetails(details) {
+      // 将详细伤情信息格式化为HTML显示
+      // 例如: "3分（①骨盆粉碎性骨折，②股骨骨折），2分（②脱位：肘、手、肩、肩锁关节）"
+      if (!details) return '';
+      
+      // 按逗号分割不同的分值组
+      const scoreGroups = details.split('，');
+      let formattedHtml = '';
+      
+      scoreGroups.forEach(group => {
+        if (group.trim()) {
+          // 提取分值和伤情描述
+          const match = group.match(/(\d+)分（(.+)）/);
+          if (match) {
+            const score = match[1];
+            const injuries = match[2];
+            
+            formattedHtml += `<div class="score-group">
+              <span class="score-badge">${score}分</span>
+              <span class="injuries-list">（${injuries}）</span>
+            </div>`;
+          }
+        }
+      });
+      
+      return formattedHtml;
     },
     closeModal() {
       this.visible = false;
@@ -680,6 +732,49 @@ c0-20.855,2.907-41.609,8.636-61.662
   background-color: #f9f9f9;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.injury-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.injury-details {
+  margin-top: 8px;
+  padding-left: 10px;
+  border-left: 3px solid #e0e0e0;
+}
+
+.details-content {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.score-group {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 4px;
+  gap: 6px;
+}
+
+.score-badge {
+  background: linear-gradient(135deg, #409EFF, #64b5ff);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.injuries-list {
+  color: #555;
+  font-size: 12px;
+  line-height: 1.3;
 }
 
 .injury-item:hover {

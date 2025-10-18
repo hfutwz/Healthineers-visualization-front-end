@@ -5,6 +5,15 @@
         <li @click="currentModule='HeatMap'">热力图-病例-按季节</li>
         <li @click="currentModule='MapDataAnimation'">热力图-病例-按日期</li>
         <li @click="currentModule='PatientList'">热力图-病人信息</li>
+        <li @click="currentModule='ShowTimeperiods'">统计分析- 时间段_周 热力图</li>
+        <li @click="currentModule='ShowSeasonalBarChart'">统计分析- 季节_伤因 柱状图</li>
+        <li @click="currentModule='ShowIssBar'">统计分析- ISS评分分布 饼图</li>
+        <li @click="currentModule='ShowInjuryRecord'">统计分析- 身体区域损伤分布 旭日图</li>
+        <li @click="currentModule='ShowInterventionCloud'">统计分析- 干预措施使用频率 词云</li>
+        <li @click="currentModule='ShowInterTime'">统计分析- 干预措施时间效率 箱线图</li>
+        <li @click="currentModule='ShowPatientFlowSankey'">统计分析- 患者流向 桑基图</li>
+        <li @click="currentModule='ShowInterDistribution'">统计分析- 创伤部分 时间分布</li>
+        <li @click="currentModule='ShowInjuryAnalysis'">统计分析- 创伤部位与伤因时间分布</li>
         <li @click="currentModule='Other'">其他模块</li>
       </ul>
     </div>
@@ -18,6 +27,16 @@
 import MapDataAnimation from '@/components/MapDataAnimation.vue' 
 import HeatMap from '../components/HeatMap.vue'
 import PatientList from '../components/PatientList.vue'
+import ShowTimeperiods from '@/components/ShowTimeperiods.vue'
+import ShowSeasonalBarChart from '@/components/ShowSeasonalBarChart.vue'
+import ShowIssBar from '@/components/ShowIssBar.vue'
+import ShowInjuryRecord from '@/components/ShowInjuryRecord.vue'
+import ShowInterventionCloud from '@/components/ShowInterventionCloud.vue'
+import ShowInterTime from '@/components/ShowInterTime.vue'
+import ShowPatientFlowSankey from '@/components/ShowPatientFlowSankey.vue'
+import ShowInterDistribution from '@/components/ShowInterDistribution.vue'
+import ShowInjuryAnalysis from '@/components/ShowInjuryAnalysis.vue'
+
 // 可以加入其他组件
 export default {
   data() {
@@ -34,6 +53,24 @@ export default {
           return 'MapDataAnimation'
         case 'PatientList':
           return 'PatientList'
+        case 'ShowTimeperiods':
+          return 'ShowTimeperiods'
+        case 'ShowSeasonalBarChart':
+          return 'ShowSeasonalBarChart'
+        case 'ShowIssBar':
+          return 'ShowIssBar'
+        case 'ShowInjuryRecord':
+          return 'ShowInjuryRecord'
+        case 'ShowInterventionCloud':
+          return 'ShowInterventionCloud'
+        case 'ShowInterTime':
+          return 'ShowInterTime'
+        case 'ShowPatientFlowSankey':
+          return 'ShowPatientFlowSankey'
+        case 'ShowInterDistribution':
+          return 'ShowInterDistribution'
+        case 'ShowInjuryAnalysis':
+          return 'ShowInjuryAnalysis'
         case 'Other':
           return 'div' // 将来可以放“Other”组件
         default:
@@ -45,6 +82,15 @@ export default {
     HeatMap,
     MapDataAnimation,
     PatientList,
+    ShowTimeperiods,
+    ShowSeasonalBarChart,
+    ShowIssBar,
+    ShowInjuryRecord,
+    ShowInterventionCloud,
+    ShowInterTime,
+    ShowPatientFlowSankey,
+    ShowInterDistribution,
+    ShowInjuryAnalysis
   }
 }
 </script>
