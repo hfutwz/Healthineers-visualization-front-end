@@ -54,6 +54,8 @@
             <button @click="fetchInterventionData(patient)">查看干预时间</button>
             <button @click="showGcsModal(patient)">GCS评分</button>
             <button @click="showRtsModal(patient)">RTS评分</button>
+            <button @click="showOnAdmissionModal(patient)">入室前信息</button>
+            <button @click="showOffAdmissionModal(patient)">离室后信息</button>
           </td>
         </tr>
       </tbody>
@@ -116,7 +118,7 @@
     <!-- 时间线弹窗 -->
     <intervention-timeline-dialog
       v-if="showTimeline"
-      :local-data="selectedPatientData"
+      :patient-id="selectedPatientData.patientId"
       @close="closeTimeline"
     />
 
@@ -133,6 +135,20 @@
       :patient="currentRtsPatient"
       @close="closeRtsModal"
     />
+
+    <!-- 入室前信息弹窗 -->
+    <PatientOnAdmissionModal
+      v-if="showOnAdmissionModalFlag"
+      :patient="currentOnAdmissionPatient"
+      @close="closeOnAdmissionModal"
+    />
+
+    <!-- 离室后信息弹窗 -->
+    <PatientOffAdmissionModal
+      v-if="showOffAdmissionModalFlag"
+      :patient="currentOffAdmissionPatient"
+      @close="closeOffAdmissionModal"
+    />
   </div>
 </template>
 
@@ -141,6 +157,8 @@ import InjuryFigureModal from './InjuryFigureModal.vue'
 import InterventionTimelineDialog from './InterventionTimelineDialog.vue'
 import GcsScoreModal from './GcsScoreModal.vue'
 import RtsScoreModal from './RtsScoreModal.vue'
+import PatientOnAdmissionModal from './PatientOnAdmissionModal.vue'
+import PatientOffAdmissionModal from './PatientOffAdmissionModal.vue'
 
 export default {
   components: {
@@ -148,6 +166,8 @@ export default {
     InterventionTimelineDialog,
     GcsScoreModal,
     RtsScoreModal,
+    PatientOnAdmissionModal,
+    PatientOffAdmissionModal,
   },
   data() {
     return {
@@ -182,6 +202,14 @@ export default {
       // RTS评分弹窗
       showRtsModalFlag: false,
       currentRtsPatient: null,
+
+      // 入室前信息弹窗
+      showOnAdmissionModalFlag: false,
+      currentOnAdmissionPatient: null,
+
+      // 离室后信息弹窗
+      showOffAdmissionModalFlag: false,
+      currentOffAdmissionPatient: null,
     }
   },
   computed: {
@@ -381,6 +409,26 @@ export default {
           console.error('获取RTS评分数据失败:', err);
           // 即使获取失败，也显示弹窗，但数据可能不完整
         });
+    },
+
+    // 入室前信息相关方法
+    showOnAdmissionModal(patient) {
+      this.currentOnAdmissionPatient = patient;
+      this.showOnAdmissionModalFlag = true;
+    },
+
+    closeOnAdmissionModal() {
+      this.showOnAdmissionModalFlag = false;
+    },
+
+    // 离室后信息相关方法
+    showOffAdmissionModal(patient) {
+      this.currentOffAdmissionPatient = patient;
+      this.showOffAdmissionModalFlag = true;
+    },
+
+    closeOffAdmissionModal() {
+      this.showOffAdmissionModalFlag = false;
     }
   },
   mounted() {

@@ -114,7 +114,7 @@
     <!-- 时间线弹窗 -->
     <intervention-timeline-dialog
       v-if="showTimelineDialog"
-      :local-data="timelineData"
+      :patient-id="patient.patientId"
       @close="closeTimelineDialog"
     />
   </div>
@@ -326,25 +326,21 @@ c0-20.855,2.907-41.609,8.636-61.662
       // 例如: "3分（①骨盆粉碎性骨折，②股骨骨折），2分（②脱位：肘、手、肩、肩锁关节）"
       if (!details) return '';
       
-      // 按逗号分割不同的分值组
-      const scoreGroups = details.split('，');
+      // 使用正则表达式匹配所有 "数字分（描述）" 的模式
+      const scorePattern = /(\d+)分（([^）]+)）/g;
       let formattedHtml = '';
+      let match;
       
-      scoreGroups.forEach(group => {
-        if (group.trim()) {
-          // 提取分值和伤情描述
-          const match = group.match(/(\d+)分（(.+)）/);
-          if (match) {
-            const score = match[1];
-            const injuries = match[2];
-            
-            formattedHtml += `<div class="score-group">
-              <span class="score-badge">${score}分</span>
-              <span class="injuries-list">（${injuries}）</span>
-            </div>`;
-          }
-        }
-      });
+      // 使用全局匹配来找到所有匹配项
+      while ((match = scorePattern.exec(details)) !== null) {
+        const score = match[1];
+        const injuries = match[2];
+        
+        formattedHtml += `<div class="score-group">
+          <span class="score-badge">${score}分</span>
+          <span class="injuries-list">（${injuries}）</span>
+        </div>`;
+      }
       
       return formattedHtml;
     },
