@@ -2,7 +2,6 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 import MapPage from '../views/MapPage.vue'
-import Dashboard from '../views/Dashboard.vue'
 
 Vue.use(Router)
 
@@ -11,11 +10,6 @@ const routes = [
     path: '/',
     name: 'MapPage',
     component: MapPage
-  },
-  {
-    path: '/dashboard',
-    name: 'Dashboard',
-    component: Dashboard
   }
 ]
 
