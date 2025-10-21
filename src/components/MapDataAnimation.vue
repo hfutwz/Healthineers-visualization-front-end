@@ -2,11 +2,14 @@
   <div class="map-anim-container">
     <!-- 顶部控制 -->
     <div class="top-controls">
-      <label>起始日期：</label>
-      <input type="date" v-model="baseDate" />
-      <button @click="startAnimation">开始查询</button>
-      <button @click="stopAnimation">停止</button>
-      <span class="current-date">当前日期：{{ currentDate }}</span>
+      <label>年份：</label>
+      <select v-model="selectedYear" class="year-select">
+        <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
+      </select>
+      <button class="btn btn-primary" :disabled="isLoading" @click="startAnimation">开始查询</button>
+      <button class="btn btn-secondary" @click="stopAnimation">停止</button>
+      <span class="current-date">当前月份：{{ currentMonth }}</span>
+      <span class="month-total" v-if="currentMonthTotal !== null">当月患者总数：{{ currentMonthTotal }}</span>
     </div>
     <!-- 大地图 -->
     <div id="mapContainer" class="map-box"></div>
@@ -59,13 +62,17 @@ export default {
     return {
       map: null,          // 主地图
       heatmap: null,      // 主热力图层
-      baseDate: '',       // 用户选择起始日
-      dayDataList: [],    // 7天的数据 & miniMap 实例
+      selectedYear: '',   // 选择年份
+      yearOptions: [],    // 年份下拉（当前年起往前10年）
+      dayDataList: [],    // 月份数据 & miniMap 实例
       currentIdx: 0,      // 当前激活索引
       intervalId: null,   // 自动轮播句柄
-      currentDate: '',    // 顶部文字
+      currentMonth: '',   // 顶部文字（YYYY-MM）
       offsetX: 0,         // track 偏移量
       slideWidth: 180,    // 单个 slide 宽度（含 margin）
+      isLoading: false,   // 加载状态，避免重复请求
+      lastFetchedYear: null, // 上次拉取年份
+      currentMonthTotal: null, // 当前月总数
     };
   },
   methods: {
@@ -109,45 +116,54 @@ export default {
       });
     },
 
-    /* ---------------- 数据请求 ---------------- */
-    async fetch7Days() {
-      if (!this.baseDate) { alert('请先选择起始日期'); return; }
-      const base = new Date(this.baseDate);
-      const dateArr = [];
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(base);
-        d.setDate(base.getDate() + i);
-        dateArr.push(this.fmtDate(d));
-      }
-      // 并发请求
-      const tasks = dateArr.map(date =>
-        this.$axios.get('/api/map/location-filtered', {
-          params: { startDate: date, endDate: date },
+    /* ---------------- 数据请求（按月） ---------------- */
+    async fetch12Months() {
+      if (!this.selectedYear) { alert('请先选择年份'); return; }
+      this.isLoading = true;
+      const y = Number(this.selectedYear);
+      const months = Array.from({ length: 12 }, (_, i) => i + 1);
+      const tasks = months.map(m => {
+        const mm = String(m).padStart(2, '0');
+        const startDate = `${y}-${mm}-01`;
+        const endDate = this.getMonthEnd(y, m);
+        return this.$axios.get('/api/map/location-filtered', {
+          params: { startDate, endDate }
         }).then(res => {
-          const pts = (res.data.data || []).map(v => ({
+          const list = res.data.data || [];
+          const pts = list.map(v => ({
             lng: v.longitude,
             lat: v.latitude,
             count: v.count,
           }));
-          return { date, points: pts };
-        })
-      );
-      const arr = await Promise.all(tasks);
-      this.dayDataList = arr;
-      this.currentIdx = 0;
-      this.switchBigMap();          // 第一次渲染主地图
-      this.dayDataList.forEach((v, i) => this.initMiniMap(i, v.points));
-      this.scrollToCenter(0);       // 把第一个居中
+          const total = list.reduce((sum, v) => sum + (Number(v.count) || 0), 0);
+          return { month: `${y}-${mm}`, points: pts, total };
+        });
+      });
+      try {
+        const arr = await Promise.all(tasks);
+        this.dayDataList = arr;
+        this.currentIdx = 0;
+        this.switchBigMap();          // 第一次渲染主地图
+        this.dayDataList.forEach((v, i) => this.initMiniMap(i, v.points));
+        this.scrollToCenter(0);       // 把第一个居中
+        this.lastFetchedYear = this.selectedYear;
+      } finally {
+        this.isLoading = false;
+      }
     },
 
     /* ---------------- 轮播控制 ---------------- */
-    startAnimation() {
-      if (!this.baseDate) { alert('请先选择起始日期'); return; }
-      if (this.dayDataList.length === 0) {
-        this.fetch7Days().then(() => this.autoPlay());
+    async startAnimation() {
+      if (!this.selectedYear) { alert('请先选择年份'); return; }
+      this.stopAnimation();
+      if (this.dayDataList.length === 0 || this.lastFetchedYear !== this.selectedYear) {
+        await this.fetch12Months();
       } else {
-        this.autoPlay();
+        this.currentIdx = 0;
+        this.switchBigMap();
+        this.scrollToCenter(0);
       }
+      this.autoPlay();
     },
     autoPlay() {
       this.stopAnimation();
@@ -158,11 +174,12 @@ export default {
     stopAnimation() {
       if (this.intervalId) { clearInterval(this.intervalId); this.intervalId = null; }
     },
-    /* 左右箭头 +/-1 */
+    /* 左右箭头 +/-1，支持循环 */
     move(step) {
-      let next = this.currentIdx + step;
-      if (next < 0) next = 0;
-      if (next >= this.dayDataList.length) next = this.dayDataList.length - 1;
+      const len = this.dayDataList.length;
+      if (len === 0) return;
+      let next = (this.currentIdx + step) % len;
+      if (next < 0) next += len;
       this.jumpTo(next);
     },
     /* 跳到指定索引 */
@@ -175,7 +192,8 @@ export default {
     switchBigMap() {
       const item = this.dayDataList[this.currentIdx];
       if (!item) return;
-      this.currentDate = item.date;
+      this.currentMonth = item.month;
+      this.currentMonthTotal = item.total ?? null;
       if (this.heatmap) {
         this.heatmap.setDataSet({ data: item.points, max: 1 });
       }
@@ -196,9 +214,16 @@ export default {
       const day = String(d.getDate()).padStart(2, '0');
       return `${y}-${m}-${day}`;
     },
+    getMonthEnd(year, month) {
+      const last = new Date(year, month, 0).getDate();
+      return `${year}-${String(month).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
+    }
   },
   mounted() {
     this.initMap();
+    const cur = new Date().getFullYear();
+    this.yearOptions = Array.from({ length: 11 }, (_, i) => cur - i);
+    this.selectedYear = cur;
   },
   beforeDestroy() {
     this.stopAnimation();
@@ -227,6 +252,46 @@ export default {
   border: 1px solid #ccc;
   border-radius: 4px;
 }
+/* 主题化下拉框与按钮 */
+.year-select {
+  padding: 6px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  background: #fff;
+  color: #1f2937;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.year-select:focus {
+  border-color: #409eff;
+  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.2);
+}
+.btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: linear-gradient(180deg, #5aa9ff 0%, #409eff 100%);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #e5e7eb;
+}
+.btn-secondary:hover {
+  background: #e5e7eb;
+}
 button {
   padding: 8px 15px;
   border: none;
@@ -243,6 +308,14 @@ button:hover {
   margin-left: auto;
   font-weight: bold;
   background: #f0f0f0;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+.month-total {
+  margin-left: 10px;
+  font-weight: 600;
+  background: #eef6ff;
+  color: #1e3a8a;
   padding: 4px 10px;
   border-radius: 4px;
 }

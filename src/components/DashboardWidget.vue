@@ -254,23 +254,7 @@ export default {
     clearError() {
       this.hasError = false;
       this.errorMessage = '';
-    }
-  },
-  
-  mounted() {
-    // 添加全局事件监听
-    document.addEventListener('mousemove', this.handleMouseMove);
-    document.addEventListener('mouseup', this.handleMouseUp);
-  },
-  
-  beforeDestroy() {
-    // 移除全局事件监听
-    document.removeEventListener('mousemove', this.handleMouseMove);
-    document.removeEventListener('mouseup', this.handleMouseUp);
-  },
-  
-  methods: {
-    ...this.methods,
+    },
     
     // 处理鼠标移动
     handleMouseMove(event) {
@@ -304,37 +288,38 @@ export default {
     
     // 处理调整大小
     handleResize(event) {
+      if (!this.isResizing) return;
+      
       const deltaX = event.clientX - this.resizeStart.x;
       const deltaY = event.clientY - this.resizeStart.y;
       
       let newWidth = this.resizeStart.width;
       let newHeight = this.resizeStart.height;
-      let newX = this.position.x;
-      let newY = this.position.y;
       
-      // 根据方向调整大小
-      if (this.resizeDirection.includes('e')) {
+      if (this.resizeDirection.includes('right')) {
         newWidth = Math.max(200, this.resizeStart.width + deltaX);
       }
-      if (this.resizeDirection.includes('w')) {
-        newWidth = Math.max(200, this.resizeStart.width - deltaX);
-        newX = this.position.x + deltaX;
-      }
-      if (this.resizeDirection.includes('s')) {
+      if (this.resizeDirection.includes('bottom')) {
         newHeight = Math.max(150, this.resizeStart.height + deltaY);
-      }
-      if (this.resizeDirection.includes('n')) {
-        newHeight = Math.max(150, this.resizeStart.height - deltaY);
-        newY = this.position.y + deltaY;
       }
       
       this.$emit('widget-resize', this.widgetConfig.id, {
-        x: newX,
-        y: newY,
         width: newWidth,
         height: newHeight
       });
     }
+  },
+  
+  mounted() {
+    // 添加全局事件监听
+    document.addEventListener('mousemove', this.handleMouseMove);
+    document.addEventListener('mouseup', this.handleMouseUp);
+  },
+  
+  beforeDestroy() {
+    // 移除全局事件监听
+    document.removeEventListener('mousemove', this.handleMouseMove);
+    document.removeEventListener('mouseup', this.handleMouseUp);
   }
 }
 </script>

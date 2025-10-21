@@ -54,12 +54,12 @@
           <label>时间段</label>
           <el-select v-model="selectedTimePeriod" placeholder="选择时间段" size="small">
             <el-option label="全部" value="all"></el-option>
-            <el-option label="早高峰(7-9)" value="morning_peak"></el-option>
-            <el-option label="上午(9-12)" value="morning"></el-option>
-            <el-option label="中午(12-14)" value="noon"></el-option>
-            <el-option label="下午(14-17)" value="afternoon"></el-option>
-            <el-option label="晚高峰(17-19)" value="evening_peak"></el-option>
-            <el-option label="夜间(19-7)" value="night"></el-option>
+            <el-option label="夜间(00:00-07:59)" value="night"></el-option>
+            <el-option label="早高峰(08:00-09:59)" value="morning_peak"></el-option>
+            <el-option label="午高峰(10:00-11:59)" value="noon_peak"></el-option>
+            <el-option label="下午(12:00-16:59)" value="afternoon"></el-option>
+            <el-option label="晚高峰(17:00-19:59)" value="evening_peak"></el-option>
+            <el-option label="晚上(20:00-23:59)" value="evening"></el-option>
           </el-select>
         </div>
         <div class="filter-item">
@@ -95,17 +95,17 @@
             </div>
             <div class="stat-content">
               <div class="stat-value">{{ totalPatients }}</div>
-              <div class="stat-label">总患者数</div>
+              <div class="stat-label">总患者人数</div>
             </div>
           </div>
 
           <div class="stat-card">
             <div class="stat-icon">
-              <i class="el-icon-warning"></i>
+              <i class="el-icon-date"></i>
             </div>
             <div class="stat-content">
-              <div class="stat-value">{{ criticalPatients }}</div>
-              <div class="stat-label">危重患者</div>
+              <div class="stat-value">{{ dailyAverage }}</div>
+              <div class="stat-label">日均患者人数</div>
             </div>
           </div>
 
@@ -114,8 +114,8 @@
               <i class="el-icon-time"></i>
             </div>
             <div class="stat-content">
-              <div class="stat-value">{{ avgResponseTime }}</div>
-              <div class="stat-label">平均响应时间(分钟)</div>
+              <div class="stat-value">{{ avgInterventionTime }}</div>
+              <div class="stat-label">平均干预时间(分钟)</div>
             </div>
           </div>
 
@@ -130,106 +130,122 @@
           </div>
         </div>
 
-        <!-- 科技感图表区域 -->
-        <div class="tech-charts-container">
-          <div class="chart-box chart-1">
-            <div class="chart-header">
-              <div class="chart-title">
-                <i class="el-icon-data-line"></i>
-                <span>周热力图</span>
+        <!-- 主要可视化图表区域 - 紧凑布局 -->
+        <div class="dashboard-grid">
+          <!-- 第一行：月度时间热力图（占据主要位置） -->
+          <div class="grid-item main-heatmap">
+            <MonthlyTimeHeatmap 
+              :selectedYear="selectedYear"
+              :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
+              :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
+              :season="selectedSeason"
+              :timePeriod="selectedTimePeriod" />
+          </div>
+          
+          <!-- 第二行：三个饼状图（ISS、GCS、RTS） -->
+          <div class="grid-item pie-chart-container">
+            <div class="pie-chart-box">
+              <div class="chart-header">
+                <div class="chart-title">
+                  <i class="el-icon-pie-chart"></i>
+                  <span>ISS分布</span>
+                </div>
+                <div class="chart-subtitle">创伤严重度分析</div>
               </div>
-              <div class="chart-subtitle">患者流量时间分布</div>
-            </div>
-            <div class="chart-content">
-              <div class="chart-placeholder">
-                <i class="el-icon-data-line"></i>
-                <p>周热力图</p>
-                <small>患者流量时间分布</small>
+              <div class="chart-content">
+                <div class="chart-placeholder">
+                  <i class="el-icon-pie-chart"></i>
+                  <p>ISS分布饼状图</p>
+                  <small>创伤严重度分析</small>
+                </div>
               </div>
             </div>
           </div>
-
-          <div class="chart-box chart-2">
-            <div class="chart-header">
-              <div class="chart-title">
-                <i class="el-icon-pie-chart"></i>
-                <span>创伤部位分析</span>
+          
+          <div class="grid-item pie-chart-container">
+            <div class="pie-chart-box">
+              <div class="chart-header">
+                <div class="chart-title">
+                  <i class="el-icon-pie-chart"></i>
+                  <span>GCS分布</span>
+                </div>
+                <div class="chart-subtitle">格拉斯哥昏迷评分</div>
               </div>
-              <div class="chart-subtitle">身体部位损伤统计</div>
-            </div>
-            <div class="chart-content">
-              <div class="chart-placeholder">
-                <i class="el-icon-pie-chart"></i>
-                <p>创伤部位分析</p>
-                <small>身体部位损伤统计</small>
-              </div>
-            </div>
-          </div>
-
-          <div class="chart-box chart-3">
-            <div class="chart-header">
-              <div class="chart-title">
-                <i class="el-icon-data-analysis"></i>
-                <span>ISS评分分布</span>
-              </div>
-              <div class="chart-subtitle">创伤严重度分析</div>
-            </div>
-            <div class="chart-content">
-              <div class="chart-placeholder">
-                <i class="el-icon-data-analysis"></i>
-                <p>ISS评分分布</p>
-                <small>创伤严重度分析</small>
+              <div class="chart-content">
+                <div class="chart-placeholder">
+                  <i class="el-icon-pie-chart"></i>
+                  <p>GCS分布饼状图</p>
+                  <small>格拉斯哥昏迷评分</small>
+                </div>
               </div>
             </div>
           </div>
-
-          <div class="chart-box chart-4">
-            <div class="chart-header">
-              <div class="chart-title">
-                <i class="el-icon-user-solid"></i>
-                <span>身体区域损伤</span>
+          
+          <div class="grid-item pie-chart-container">
+            <div class="pie-chart-box">
+              <div class="chart-header">
+                <div class="chart-title">
+                  <i class="el-icon-pie-chart"></i>
+                  <span>RTS分布</span>
+                </div>
+                <div class="chart-subtitle">修正创伤评分</div>
               </div>
-              <div class="chart-subtitle">人体图可视化</div>
-            </div>
-            <div class="chart-content">
-              <div class="chart-placeholder">
-                <i class="el-icon-user-solid"></i>
-                <p>身体区域损伤</p>
-                <small>人体图可视化</small>
-              </div>
-            </div>
-          </div>
-
-          <div class="chart-box chart-5">
-            <div class="chart-header">
-              <div class="chart-title">
-                <i class="el-icon-timer"></i>
-                <span>干预时间效率</span>
-              </div>
-              <div class="chart-subtitle">救治时间分析</div>
-            </div>
-            <div class="chart-content">
-              <div class="chart-placeholder">
-                <i class="el-icon-timer"></i>
-                <p>干预时间效率</p>
-                <small>救治时间分析</small>
+              <div class="chart-content">
+                <div class="chart-placeholder">
+                  <i class="el-icon-pie-chart"></i>
+                  <p>RTS分布饼状图</p>
+                  <small>修正创伤评分</small>
+                </div>
               </div>
             </div>
           </div>
-
-          <div class="chart-box chart-6">
-            <div class="chart-header">
-              <div class="chart-title">
-                <i class="el-icon-share"></i>
-                <span>患者流向图</span>
+          
+          <!-- 第三行：身体区域损伤旭日图 -->
+          <div class="grid-item sunburst-container">
+            <div class="sunburst-chart-box">
+              <div class="chart-header">
+                <div class="chart-title">
+                  <i class="el-icon-user-solid"></i>
+                  <span>身体区域损伤</span>
+                </div>
+                <div class="chart-subtitle">人体损伤分布旭日图</div>
               </div>
-              <div class="chart-subtitle">治疗流程可视化</div>
+              <div class="chart-content">
+                <div class="chart-placeholder">
+                  <i class="el-icon-user-solid"></i>
+                  <p>身体区域损伤旭日图</p>
+                  <small>人体损伤分布可视化</small>
+                </div>
+              </div>
             </div>
-            <div class="chart-content">
-              <div class="chart-placeholder">
-                <i class="el-icon-share"></i>
-                <p>患者流向图</p>
-                <small>治疗流程可视化</small>
+          </div>
+          
+          <!-- 第四行：伤因分布柱状图 -->
+          <div class="grid-item injury-cause-container">
+            <InjuryCauseChart 
+              :selectedYear="selectedYear"
+              :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
+              :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
+              :season="selectedSeason"
+              :timePeriod="selectedTimePeriod" />
+          </div>
+          
+          <!-- 第五行：人群身体热力图 -->
+          <div class="grid-item body-heatmap-container">
+            <div class="body-heatmap-box">
+              <div class="chart-header">
+                <div class="chart-title">
+                  <i class="el-icon-s-data"></i>
+                  <span>人群身体热力图</span>
+                </div>
+                <div class="chart-subtitle">所有人群损伤分布汇总</div>
+              </div>
+              <div class="chart-content">
+                <div class="chart-placeholder">
+                  <i class="el-icon-s-data"></i>
+                  <p>人群身体热力图</p>
+                  <small>所有人群损伤分布汇总</small>
+                </div>
               </div>
             </div>
           </div>
@@ -254,8 +270,15 @@
 </template>
 
 <script>
+import MonthlyTimeHeatmap from '@/components/MonthlyTimeHeatmap.vue'
+import InjuryCauseChart from '@/components/InjuryCauseChart.vue'
+
 export default {
   name: 'DashboardPage',
+  components: {
+    MonthlyTimeHeatmap,
+    InjuryCauseChart
+  },
   data() {
     return {
       // 当前时间
@@ -269,10 +292,10 @@ export default {
       selectedYear: new Date().getFullYear().toString(),
       
       // 统计数据
-      totalPatients: 1248,
-      criticalPatients: 89,
-      avgResponseTime: 15.6,
-      successRate: 94.2,
+      totalPatients: 0,
+      dailyAverage: 0,
+      avgInterventionTime: 0,
+      successRate: 0,
       onlineUsers: 12,
       
       // 可用窗口组件
@@ -317,6 +340,9 @@ export default {
     this.updateTime();
     this.initializeWidgets();
     this.setupEventListeners();
+    this.fetchStatistics();
+    this.fetchMonthlyHeatmapData();
+    this.fetchInjuryCauseData();
   },
   
   beforeDestroy() {
@@ -324,15 +350,50 @@ export default {
   },
   
   methods: {
+    // 获取统计数据
+    fetchStatistics() {
+      // 构建查询参数
+      let params = {};
+      
+      // 如果有日期范围，添加到参数中
+      if (this.dateRange && this.dateRange.length === 2) {
+        params.startDate = this.dateRange[0];
+        params.endDate = this.dateRange[1];
+      }
+      
+      this.$axios.get('/api/patient-statistics/statistics', { params })
+        .then(res => {
+          if (res.data.success && res.data.data) {
+            const data = res.data.data;
+            this.totalPatients = data.totalPatients || 0;
+            this.dailyAverage = Math.round(data.averagePatientsPerDay * 10) / 10;
+            this.avgInterventionTime = Math.round(data.averageInterventionTime * 10) / 10;
+            this.successRate = Math.round(data.successRate * 10) / 10;
+          }
+        })
+        .catch(err => {
+          console.error('获取统计数据失败:', err);
+          this.$message.error('获取统计数据失败');
+        });
+    },
+
     // 处理查询按钮点击
     handleQuery() {
       this.queryLoading = true;
+      
+      // 获取统计数据（四个变量）
+      this.fetchStatistics();
+      
+      // 获取患者流量月度时间分布数据
+      this.fetchMonthlyHeatmapData();
+      
+      // 获取伤因分布数据
+      this.fetchInjuryCauseData();
       
       // 模拟查询过程
       setTimeout(() => {
         this.queryLoading = false;
         
-        // 这里将来会发送多个可视化请求
         console.log('查询参数:', {
           dateRange: this.dateRange,
           season: this.selectedSeason,
@@ -340,16 +401,96 @@ export default {
           year: this.selectedYear
         });
         
-        // TODO: 发送多个可视化请求
-        // this.fetchHeatmapData();
-        // this.fetchInjuryAnalysisData();
-        // this.fetchISSScoreData();
-        // this.fetchBodyRegionData();
-        // this.fetchInterventionTimeData();
-        // this.fetchPatientFlowData();
-        
         this.$message.success('数据查询完成！');
       }, 1500);
+    },
+
+    // 获取患者流量月度时间分布数据
+    fetchMonthlyHeatmapData() {
+      // 构建查询参数
+      let params = {};
+      
+      // 如果有日期范围，添加到参数中
+      if (this.dateRange && this.dateRange.length === 2) {
+        params.startDate = this.dateRange[0];
+        params.endDate = this.dateRange[1];
+      }
+      
+      // 添加年份参数
+      if (this.selectedYear) {
+        params.year = this.selectedYear;
+      }
+      
+      // 添加季节参数
+      if (this.selectedSeason && this.selectedSeason !== 'all') {
+        // 将季节字符串转换为数字
+        const seasonMap = {
+          'spring': 0,
+          'summer': 1,
+          'autumn': 2,
+          'winter': 3
+        };
+        params.season = seasonMap[this.selectedSeason];
+      }
+      
+      // 添加时间段参数
+      if (this.selectedTimePeriod && this.selectedTimePeriod !== 'all') {
+        // 将时间段字符串转换为数字（与数据库定义一致）
+        const timePeriodMap = {
+          'night': 0,           // 夜间(00:00-07:59)
+          'morning_peak': 1,    // 早高峰(08:00-09:59)
+          'noon_peak': 2,       // 午高峰(10:00-11:59)
+          'afternoon': 3,       // 下午(12:00-16:59)
+          'evening_peak': 4,    // 晚高峰(17:00-19:59)
+          'evening': 5          // 晚上(20:00-23:59)
+        };
+        params.timePeriod = timePeriodMap[this.selectedTimePeriod];
+      }
+      
+      console.log('月度热力图查询参数:', params);
+      
+      // 只发送月度热力图数据请求
+      this.$axios.get('/api/patient-statistics/monthly-heatmap', { params })
+        .then(response => {
+          console.log('月度热力图数据请求成功:', response.data);
+          // 这里可以处理热力图数据
+          if (response.data.success) {
+            console.log('热力图数据:', response.data.data);
+          }
+        })
+        .catch(error => {
+          console.error('月度热力图数据请求失败:', error);
+          this.$message.error('获取月度热力图数据失败');
+        });
+    },
+
+    // 获取伤因分布数据
+    fetchInjuryCauseData() {
+      // 构建查询参数
+      let params = {};
+      
+      // 如果有日期范围，添加到参数中
+      if (this.dateRange && this.dateRange.length === 2) {
+        params.startDate = this.dateRange[0];
+        params.endDate = this.dateRange[1];
+      }
+      
+      // 添加年份参数
+      if (this.selectedYear) {
+        params.year = this.selectedYear;
+      }
+      
+      this.$axios.get('/api/patient-statistics/injury-cause-distribution', { params })
+        .then(response => {
+          console.log('伤因分布数据请求成功:', response.data);
+          if (response.data.success) {
+            console.log('伤因分布数据:', response.data.data);
+          }
+        })
+        .catch(error => {
+          console.error('伤因分布数据请求失败:', error);
+          this.$message.error('获取伤因分布数据失败');
+        });
     },
     
     // 更新时间
@@ -661,36 +802,38 @@ export default {
 .stats-cards {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 20px;
+  gap: 15px;
+  margin-bottom: 15px;
 }
 
 .stat-card {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 8px;
+  padding: 15px;
   display: flex;
   align-items: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   transition: transform 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 .stat-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 15px;
+  margin-right: 12px;
   background: linear-gradient(135deg, #3498db, #2980b9);
   color: white;
-  font-size: 20px;
+  font-size: 16px;
 }
 
 .stat-content {
@@ -698,30 +841,119 @@ export default {
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: bold;
   color: #2c3e50;
-  margin-bottom: 5px;
+  margin-bottom: 3px;
+  line-height: 1.2;
 }
 
 .stat-label {
-  font-size: 14px;
+  font-size: 12px;
   color: #666;
+  line-height: 1.2;
 }
 
 
-/* 科技感图表容器 */
-.tech-charts-container {
+/* 新的紧凑网格布局 */
+.dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 20px;
-  padding: 20px;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto auto auto auto;
+  gap: 15px;
+  padding: 15px;
   height: calc(100vh - 300px);
   min-height: 600px;
 }
 
-/* 科技感图表框 */
+/* 主热力图 - 占据第一行 */
+.main-heatmap {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 350px;
+}
+
+/* 饼状图容器 - 第二行，三个并排 */
+.pie-chart-container {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  min-height: 200px;
+}
+
+/* 旭日图容器 - 第三行 */
+.sunburst-container {
+  grid-column: 1;
+  grid-row: 3;
+  min-height: 300px;
+}
+
+/* 伤因分布容器 - 第四行 */
+.injury-cause-container {
+  grid-column: 1;
+  grid-row: 4;
+  min-height: 300px;
+}
+
+/* 身体热力图容器 - 第五行 */
+.body-heatmap-container {
+  grid-column: 1;
+  grid-row: 5;
+  min-height: 250px;
+}
+
+/* 新的紧凑图表框样式 */
+.grid-item {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.grid-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+/* 分隔线样式 */
+.grid-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #3498db, transparent);
+  opacity: 0.3;
+}
+
+/* 饼状图框 */
+.pie-chart-box {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 旭日图框 */
+.sunburst-chart-box {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 身体热力图框 */
+.body-heatmap-box {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 科技感图表框（保留原有样式用于兼容） */
 .chart-box {
   background: linear-gradient(135deg, rgba(30, 60, 114, 0.1), rgba(42, 82, 152, 0.1));
   border: 2px solid transparent;
@@ -764,67 +996,68 @@ export default {
   100% { background-position: 0% 50%; }
 }
 
-/* 图表标题 */
+/* 紧凑图表标题 */
 .chart-header {
-  padding: 15px 20px;
-  background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 153, 204, 0.1));
-  border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+  padding: 12px 15px;
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .chart-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: #00d4ff;
-  font-size: 16px;
+  gap: 8px;
+  color: white;
+  font-size: 14px;
   font-weight: 600;
-  margin-bottom: 5px;
+  margin-bottom: 3px;
 }
 
 .chart-title i {
-  font-size: 18px;
-  color: #00d4ff;
+  font-size: 16px;
+  color: white;
 }
 
 .chart-subtitle {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
   font-weight: 400;
 }
 
-/* 图表内容 */
+/* 紧凑图表内容 */
 .chart-content {
-  padding: 20px;
-  height: calc(100% - 80px);
+  padding: 15px;
+  height: calc(100% - 60px);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.05));
+  background: #f8f9fa;
 }
 
 .chart-placeholder {
   text-align: center;
-  color: rgba(255, 255, 255, 0.8);
+  color: #666;
 }
 
 .chart-placeholder i {
-  font-size: 48px;
-  color: #00d4ff;
-  margin-bottom: 15px;
+  font-size: 32px;
+  color: #3498db;
+  margin-bottom: 10px;
   display: block;
   opacity: 0.7;
 }
 
 .chart-placeholder p {
-  font-size: 16px;
-  margin-bottom: 8px;
-  color: #ffffff;
+  font-size: 14px;
+  margin-bottom: 5px;
+  color: #333;
   font-weight: 500;
 }
 
 .chart-placeholder small {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  color: #666;
 }
 
 /* 不规则布局 */
@@ -985,9 +1218,8 @@ export default {
 
 /* 响应式设计 */
 @media (max-width: 1600px) {
-  .tech-charts-container {
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(3, 1fr);
+  .secondary-charts {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -996,9 +1228,8 @@ export default {
     grid-template-columns: repeat(2, 1fr);
   }
   
-  .tech-charts-container {
+  .secondary-charts {
     grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(3, 1fr);
   }
   
   .filter-container {
@@ -1012,9 +1243,12 @@ export default {
     grid-template-columns: 1fr;
   }
   
-  .tech-charts-container {
+  .secondary-charts {
     grid-template-columns: 1fr;
-    grid-template-rows: repeat(6, 1fr);
+  }
+  
+  .main-charts-container {
+    flex-direction: column;
   }
   
   .filter-container {

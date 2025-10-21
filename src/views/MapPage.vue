@@ -14,6 +14,7 @@
         <li @click="currentModule='ShowPatientFlowSankey'">统计分析- 患者流向 桑基图</li>
         <li @click="currentModule='ShowInterDistribution'">统计分析- 创伤部分 时间分布</li>
         <li @click="currentModule='ShowInjuryAnalysis'">统计分析- 创伤部位与伤因时间分布</li>
+        <li @click="$router.push('/hourly')">统计分析- 每小时患者数量</li>
         <li @click="currentModule='Other'">其他模块</li>
       </ul>
     </div>

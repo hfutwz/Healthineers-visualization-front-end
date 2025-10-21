@@ -19,12 +19,12 @@
         
         <el-select v-model="selectedTimePeriod" placeholder="选择时间段" style="width: 150px; margin-right: 15px;">
           <el-option label="全部时间段" value="all"></el-option>
-          <el-option label="早高峰(7-9)" value="morning_peak"></el-option>
-          <el-option label="上午(10-12)" value="morning"></el-option>
-          <el-option label="午高峰(11-13)" value="noon_peak"></el-option>
-          <el-option label="下午(14-17)" value="afternoon"></el-option>
-          <el-option label="晚高峰(17-19)" value="evening_peak"></el-option>
-          <el-option label="夜间(20-6)" value="night"></el-option>
+          <el-option label="夜间(00:00-07:59)" value="night_0_759"></el-option>
+          <el-option label="早高峰(08:00-09:59)" value="morning_peak_8_959"></el-option>
+          <el-option label="午高峰(10:00-11:59)" value="noon_peak_10_1159"></el-option>
+          <el-option label="下午(12:00-16:59)" value="afternoon_12_1659"></el-option>
+          <el-option label="晚高峰(17:00-19:59)" value="evening_peak_17_1959"></el-option>
+          <el-option label="晚上(20:00-23:59)" value="night_20_2359"></el-option>
         </el-select>
         
         <el-button type="primary" @click="refreshData">查询</el-button>

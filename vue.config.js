@@ -20,5 +20,15 @@ module.exports = {
         // host: "localhost",
         open: true,
         port: 8001,
+        proxy: {
+            '/api': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+                // 如果后端有 context-path，可在此重写
+                pathRewrite: { '^/api': '/api' },
+                ws: false,
+                logLevel: 'debug'
+            }
+        }
     }
 }
