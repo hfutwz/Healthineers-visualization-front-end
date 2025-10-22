@@ -160,14 +160,28 @@ export default {
           params.endDate = this.endDate;
         }
         
-        // 添加季节参数
+        // 添加季节参数（转换为数字）
         if (this.season && this.season !== 'all') {
-          params.season = this.season;
+          const seasonMapping = {
+            'spring': 0,  // 春季
+            'summer': 1,  // 夏季
+            'autumn': 2,  // 秋季
+            'winter': 3   // 冬季
+          };
+          params.season = seasonMapping[this.season];
         }
         
-        // 添加时间段参数
+        // 添加时间段参数（转换为数字）
         if (this.timePeriod && this.timePeriod !== 'all') {
-          params.timePeriod = this.timePeriod;
+          const timePeriodMapping = {
+            'night': 0,           // 夜间
+            'morning_peak': 1,    // 早高峰
+            'noon_peak': 2,       // 午高峰
+            'afternoon': 3,       // 下午
+            'evening_peak': 4,    // 晚高峰
+            'evening': 5          // 晚上
+          };
+          params.timePeriod = timePeriodMapping[this.timePeriod];
         }
         
         console.log('月度热力图查询参数:', params);
@@ -203,17 +217,17 @@ export default {
       
       // 时间段映射（后端返回英文，前端显示中文）
       const timePeriodMapping = {
-        'night_0_7': '夜间(0-7)',
-        'morning_rush_8_9': '早高峰(8-9)',
-        'lunch_rush_10_11': '午高峰(10-11)',
-        'afternoon_12_16': '下午(12-16)',
-        'evening_rush_17_19': '晚高峰(17-19)',
-        'night_20_23': '晚上(20-23)',
-        'total': '总和'
+        'night_0_7': '夜间(0-7时)',
+        'morning_rush_8_9': '早高峰(8-9时)',
+        'lunch_rush_10_11': '午高峰(10-11时)',
+        'afternoon_12_16': '下午(12-16时)',
+        'evening_rush_17_19': '晚高峰(17-19时)',
+        'night_20_23': '晚上(20-23时)',
+        'total': '总计'
       };
       
       // 初始化7x13数据矩阵（7个时间段 × 13个月）
-      const timePeriods = ['夜间(0-7)', '早高峰(8-9)', '午高峰(10-11)', '下午(12-16)', '晚高峰(17-19)', '晚上(20-23)', '总和'];
+      const timePeriods = ['夜间(0-7时)', '早高峰(8-9时)', '午高峰(10-11时)', '下午(12-16时)', '晚高峰(17-19时)', '晚上(20-23时)', '总计'];
       const heatmapData = timePeriods.map(period => [period, ...new Array(13).fill(0)]);
       
       // 处理API返回的数据
@@ -253,8 +267,8 @@ export default {
       
       // 处理热力图数据格式
       const data = [];
-      const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '总和'];
-      const timePeriods = ['夜间(0-7)', '早高峰(8-9)', '午高峰(10-11)', '下午(12-16)', '晚高峰(17-19)', '晚上(20-23)', '总和'];
+      const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '总计'];
+      const timePeriods = ['夜间(0-7时)', '早高峰(8-9时)', '午高峰(10-11时)', '下午(12-16时)', '晚高峰(17-19时)', '晚上(20-23时)', '总计'];
       
       for (let i = 0; i < this.heatmapData.length; i++) {
         for (let j = 1; j < this.heatmapData[i].length; j++) {
@@ -281,7 +295,7 @@ export default {
         },
         xAxis: {
           type: 'category',
-          data: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '总和'],
+          data: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '总计'],
           splitArea: {
             show: true
           },
@@ -292,7 +306,7 @@ export default {
         },
         yAxis: {
           type: 'category',
-          data: ['夜间(0-7)', '早高峰(8-9)', '午高峰(10-11)', '下午(12-16)', '晚高峰(17-19)', '晚上(20-23)', '总和'],
+          data: ['夜间(0-7时)', '早高峰(8-9时)', '午高峰(10-11时)', '下午(12-16时)', '晚高峰(17-19时)', '晚上(20-23时)', '总计'],
           splitArea: {
             show: true
           },
@@ -352,7 +366,7 @@ export default {
       let maxMonthIndex = 0;
       
       // 计算最繁忙时段（排除总和行）
-      const timePeriods = ['夜间(0-7)', '早高峰(8-9)', '午高峰(10-11)', '下午(12-16)', '晚高峰(17-19)', '晚上(20-23)'];
+      const timePeriods = ['夜间(0-7时)', '早高峰(8-9时)', '午高峰(10-11时)', '下午(12-16时)', '晚高峰(17-19时)', '晚上(20-23时)'];
       const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
       
       // 只分析前6个时间段（排除总和行）

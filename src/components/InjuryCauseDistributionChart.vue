@@ -2,28 +2,37 @@
   <div class="injury-cause-chart">
     <div class="chart-header">
       <div class="chart-title">
-        <i class="el-icon-pie-chart"></i>
+        <i class="el-icon-data-line"></i>
         <span>伤因分布</span>
       </div>
-      <div class="chart-subtitle">12个月伤因统计</div>
+      <div class="chart-subtitle">月度伤因统计柱状图</div>
     </div>
     
     <div class="chart-content">
       <div class="chart-wrapper">
-        <div ref="chart" class="chart" style="width: 100%; height: 300px;"></div>
+        <div ref="chart" class="chart" style="width: 100%; height: 400px;"></div>
       </div>
     </div>
     
     <div class="chart-footer">
       <div class="legend">
-        <div class="legend-title">伤因类型</div>
+        <div class="legend-title">伤因类型统计</div>
         <ul class="legend-list">
           <li v-for="(item, index) in legendData" :key="index" class="legend-item">
             <span class="legend-color" :style="{ backgroundColor: item.color }"></span>
             <span class="legend-label">{{ item.name }}</span>
-            <span class="legend-value">{{ item.value }}例</span>
+            <span class="legend-value">{{ item.total }}例</span>
           </li>
         </ul>
+      </div>
+      
+      <!-- 调试信息 -->
+      <div v-if="showDebug" class="debug-info">
+        <p>数据状态: {{ chartData.length > 0 ? '已加载' : '无数据' }}</p>
+        <p>伤因类型: {{ legendData.length }}种</p>
+        <p>总病例数: {{ totalPatients }}例</p>
+        <button @click="debugData" class="debug-btn">调试数据</button>
+        <button @click="forceRefresh" class="debug-btn">强制刷新</button>
       </div>
     </div>
   </div>
@@ -45,7 +54,9 @@ export default {
       chart: null,
       chartData: [],
       legendData: [],
-      totalPatients: 0
+      totalPatients: 0,
+      months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+      showDebug: false
     }
   },
   mounted() {
@@ -67,9 +78,12 @@ export default {
   methods: {
     async fetchData() {
       try {
+        console.log('InjuryCauseDistributionChart: 开始获取月度伤因数据')
         const response = await this.$axios.get('/api/patient-statistics/injury-cause-distribution', {
           params: { year: this.selectedYear }
         })
+        
+        console.log('InjuryCauseDistributionChart: API响应数据:', response.data)
         
         if (response.data.success) {
           this.processData(response.data.data)
@@ -86,59 +100,78 @@ export default {
     },
     
     processData(rawData) {
-      // 处理原始数据，按伤因类型分组
-      const causeMap = new Map()
+      console.log('InjuryCauseDistributionChart: 处理月度数据:', rawData)
       
-      rawData.forEach(item => {
-        const cause = item.injury_cause_category || '未知'
-        if (!causeMap.has(cause)) {
-          causeMap.set(cause, 0)
-        }
-        causeMap.set(cause, causeMap.get(cause) + item.patient_count)
-      })
-      
-      // 转换为图表数据格式
+      // 处理月度伤因统计数据
       this.chartData = []
       this.legendData = []
       this.totalPatients = 0
       
-      const colors = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4']
-      
-      let colorIndex = 0
-      causeMap.forEach((value, key) => {
-        this.chartData.push({
-          name: key,
-          value: value
-        })
+      // 为每个伤因类型创建系列数据
+      rawData.forEach((causeData, index) => {
+        const seriesData = {
+          name: causeData.cause_name,
+          type: 'bar',
+          stack: 'total',
+          data: causeData.monthly_data,
+          itemStyle: {
+            color: causeData.color
+          }
+        }
         
+        this.chartData.push(seriesData)
+        
+        // 添加到图例
         this.legendData.push({
-          name: key,
-          value: value,
-          color: colors[colorIndex % colors.length]
+          name: causeData.cause_name,
+          total: causeData.total_count,
+          color: causeData.color
         })
         
-        this.totalPatients += value
-        colorIndex++
+        this.totalPatients += causeData.total_count
       })
+      
+      console.log('InjuryCauseDistributionChart: 处理后的图表数据:', this.chartData)
+      console.log('InjuryCauseDistributionChart: 图例数据:', this.legendData)
     },
     
     loadMockData() {
-      // 模拟数据
+      console.log('InjuryCauseDistributionChart: 使用模拟数据')
+      // 模拟月度数据
       const mockData = [
-        { name: '交通事故', value: 450 },
-        { name: '跌倒', value: 320 },
-        { name: '工作事故', value: 280 },
-        { name: '运动伤害', value: 180 },
-        { name: '其他', value: 120 }
+        {
+          cause_name: '交通伤',
+          color: '#FF6B6B',
+          total_count: 619,
+          monthly_data: [109, 87, 109, 134, 79, 59, 42, 0, 0, 0, 0, 0]
+        },
+        {
+          cause_name: '高坠伤',
+          color: '#4ECDC4',
+          total_count: 43,
+          monthly_data: [11, 5, 7, 7, 8, 3, 2, 0, 0, 0, 0, 0]
+        },
+        {
+          cause_name: '机械伤',
+          color: '#45B7D1',
+          total_count: 74,
+          monthly_data: [12, 13, 11, 12, 10, 9, 7, 0, 0, 0, 0, 0]
+        },
+        {
+          cause_name: '跌倒',
+          color: '#96CEB4',
+          total_count: 539,
+          monthly_data: [127, 107, 74, 79, 82, 46, 24, 0, 0, 0, 0, 0]
+        },
+        {
+          cause_name: '其他',
+          color: '#FFEAA7',
+          total_count: 134,
+          monthly_data: [29, 12, 14, 28, 14, 19, 18, 0, 0, 0, 0, 0]
+        }
       ]
       
-      this.chartData = mockData
-      this.legendData = mockData.map((item, index) => ({
-        ...item,
-        color: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de'][index]
-      }))
-      this.totalPatients = mockData.reduce((sum, item) => sum + item.value, 0)
-      
+      this.processData(mockData)
       this.updateChart()
     },
     
@@ -148,56 +181,125 @@ export default {
     },
     
     updateChart() {
-      if (!this.chart) return
-      
-      const option = {
-        tooltip: {
-          trigger: 'item',
-          formatter: '{a} <br/>{b}: {c} ({d}%)'
-        },
-        legend: {
-          orient: 'vertical',
-          left: 'left',
-          data: this.chartData.map(item => item.name)
-        },
-        series: [
-          {
-            name: '伤因分布',
-            type: 'pie',
-            radius: ['40%', '70%'],
-            center: ['60%', '50%'],
-            avoidLabelOverlap: false,
-            itemStyle: {
-              borderRadius: 10,
-              borderColor: '#fff',
-              borderWidth: 2
-            },
-            label: {
-              show: false,
-              position: 'center'
-            },
-            emphasis: {
-              label: {
-                show: true,
-                fontSize: '18',
-                fontWeight: 'bold'
-              }
-            },
-            labelLine: {
-              show: false
-            },
-            data: this.chartData
-          }
-        ]
+      if (!this.chart) {
+        console.log('InjuryCauseDistributionChart: 图表实例不存在，跳过更新')
+        return
       }
       
-      this.chart.setOption(option)
+      if (!this.chartData || this.chartData.length === 0) {
+        console.log('InjuryCauseDistributionChart: 图表数据为空，跳过更新')
+        return
+      }
+      
+      console.log('InjuryCauseDistributionChart: 更新图表配置')
+      
+      const option = {
+        title: {
+          text: `${this.selectedYear}年月度伤因统计`,
+          left: 'center',
+          textStyle: {
+            fontSize: 16,
+            fontWeight: 'bold',
+            color: '#2c3e50'
+          }
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          },
+          formatter: function(params) {
+            let result = params[0].name + '<br/>'
+            let total = 0
+            params.forEach(param => {
+              if (param.value > 0) {
+                result += `${param.marker}${param.seriesName}: ${param.value}例<br/>`
+                total += param.value
+              }
+            })
+            if (total > 0) {
+              result += `<br/>总计: ${total}例`
+            }
+            return result
+          }
+        },
+        legend: {
+          data: this.legendData.map(item => item.name),
+          top: 30,
+          left: 'center'
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '3%',
+          top: '15%',
+          containLabel: true
+        },
+        xAxis: {
+          type: 'category',
+          data: this.months,
+          axisLabel: {
+            fontSize: 12
+          }
+        },
+        yAxis: {
+          type: 'value',
+          name: '病例数',
+          nameLocation: 'middle',
+          nameGap: 30,
+          axisLabel: {
+            formatter: '{value}例'
+          }
+        },
+        series: this.chartData
+      }
+      
+      console.log('InjuryCauseDistributionChart: 图表配置:', option)
+      this.chart.setOption(option, true)
     },
     
     handleResize() {
       if (this.chart) {
         this.chart.resize()
       }
+    },
+    
+    // 调试数据
+    debugData() {
+      console.log('=== InjuryCauseDistributionChart 调试信息 ===')
+      console.log('图表实例:', this.chart)
+      console.log('图表数据:', this.chartData)
+      console.log('图例数据:', this.legendData)
+      console.log('总病例数:', this.totalPatients)
+      console.log('选中年份:', this.selectedYear)
+      console.log('月份数据:', this.months)
+      
+      if (this.chart) {
+        const option = this.chart.getOption()
+        console.log('当前图表配置:', option)
+      }
+      
+      this.$message.info('调试信息已输出到控制台')
+    },
+    
+    // 强制刷新
+    forceRefresh() {
+      console.log('InjuryCauseDistributionChart: 强制刷新图表')
+      this.showDebug = !this.showDebug
+      
+      if (this.chart) {
+        this.chart.dispose()
+        this.chart = null
+      }
+      
+      this.$nextTick(() => {
+        this.initChart()
+        if (this.chartData.length > 0) {
+          this.updateChart()
+        } else {
+          this.fetchData()
+        }
+      })
     }
   }
 }
@@ -309,4 +411,34 @@ export default {
   color: #2c3e50;
   font-weight: 600;
 }
+
+.debug-info {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+  border: 1px solid #e9ecef;
+}
+
+.debug-info p {
+  margin: 5px 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.debug-btn {
+  margin: 5px 5px 0 0;
+  padding: 4px 8px;
+  font-size: 11px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.debug-btn:hover {
+  background-color: #0056b3;
+}
 </style>
+

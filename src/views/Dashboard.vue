@@ -82,11 +82,8 @@
       </div>
     </div>
 
-    <!-- 主要内容区域 -->
+    <!-- 主要内容区域 - 全屏大屏布局 -->
     <div class="dashboard-main">
-
-      <!-- 右侧可视化区域 -->
-      <div class="visualization-area">
         <!-- 统计卡片区域 -->
         <div class="stats-cards">
           <div class="stat-card">
@@ -130,10 +127,11 @@
           </div>
         </div>
 
-        <!-- 主要可视化图表区域 - 紧凑布局 -->
-        <div class="dashboard-grid">
-          <!-- 第一行：月度时间热力图（占据主要位置） -->
-          <div class="grid-item main-heatmap">
+      <!-- 可视化图表区域 - 竖列布局，无容器框 -->
+      <div class="charts-container">
+        
+        <!-- 病例时间统计图 -->
+        <div class="chart-item">
             <MonthlyTimeHeatmap 
               :selectedYear="selectedYear"
               :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
@@ -142,86 +140,18 @@
               :timePeriod="selectedTimePeriod" />
           </div>
           
-          <!-- 第二行：三个饼状图（ISS、GCS、RTS） -->
-          <div class="grid-item pie-chart-container">
-            <div class="pie-chart-box">
-              <div class="chart-header">
-                <div class="chart-title">
-                  <i class="el-icon-pie-chart"></i>
-                  <span>ISS分布</span>
-                </div>
-                <div class="chart-subtitle">创伤严重度分析</div>
-              </div>
-              <div class="chart-content">
-                <div class="chart-placeholder">
-                  <i class="el-icon-pie-chart"></i>
-                  <p>ISS分布饼状图</p>
-                  <small>创伤严重度分析</small>
-                </div>
-              </div>
-            </div>
+        <!-- ISS分布图 -->
+        <div class="chart-item">
+          <ISSDistributionChart 
+            :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
+            :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
+            :season="selectedSeason"
+            :timePeriod="selectedTimePeriod"
+            :year="selectedYear" />
           </div>
           
-          <div class="grid-item pie-chart-container">
-            <div class="pie-chart-box">
-              <div class="chart-header">
-                <div class="chart-title">
-                  <i class="el-icon-pie-chart"></i>
-                  <span>GCS分布</span>
-                </div>
-                <div class="chart-subtitle">格拉斯哥昏迷评分</div>
-              </div>
-              <div class="chart-content">
-                <div class="chart-placeholder">
-                  <i class="el-icon-pie-chart"></i>
-                  <p>GCS分布饼状图</p>
-                  <small>格拉斯哥昏迷评分</small>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="grid-item pie-chart-container">
-            <div class="pie-chart-box">
-              <div class="chart-header">
-                <div class="chart-title">
-                  <i class="el-icon-pie-chart"></i>
-                  <span>RTS分布</span>
-                </div>
-                <div class="chart-subtitle">修正创伤评分</div>
-              </div>
-              <div class="chart-content">
-                <div class="chart-placeholder">
-                  <i class="el-icon-pie-chart"></i>
-                  <p>RTS分布饼状图</p>
-                  <small>修正创伤评分</small>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 第三行：身体区域损伤旭日图 -->
-          <div class="grid-item sunburst-container">
-            <div class="sunburst-chart-box">
-              <div class="chart-header">
-                <div class="chart-title">
-                  <i class="el-icon-user-solid"></i>
-                  <span>身体区域损伤</span>
-                </div>
-                <div class="chart-subtitle">人体损伤分布旭日图</div>
-              </div>
-              <div class="chart-content">
-                <div class="chart-placeholder">
-                  <i class="el-icon-user-solid"></i>
-                  <p>身体区域损伤旭日图</p>
-                  <small>人体损伤分布可视化</small>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 第四行：伤因分布柱状图 -->
-          <div class="grid-item injury-cause-container">
+        <!-- 伤因分布图 -->
+        <div class="chart-item">
             <InjuryCauseChart 
               :selectedYear="selectedYear"
               :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
@@ -230,26 +160,48 @@
               :timePeriod="selectedTimePeriod" />
           </div>
           
-          <!-- 第五行：人群身体热力图 -->
-          <div class="grid-item body-heatmap-container">
-            <div class="body-heatmap-box">
-              <div class="chart-header">
-                <div class="chart-title">
-                  <i class="el-icon-s-data"></i>
-                  <span>人群身体热力图</span>
+        <!-- GCS分布图 -->
+        <div class="chart-item">
+          <GCSDistributionChart 
+            :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
+            :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
+            :season="selectedSeason"
+            :timePeriod="selectedTimePeriod"
+            :year="selectedYear" />
                 </div>
-                <div class="chart-subtitle">所有人群损伤分布汇总</div>
+
+        <!-- RTS分布图 -->
+        <div class="chart-item">
+          <RTSDistributionChart 
+            :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
+            :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
+            :season="selectedSeason"
+            :timePeriod="selectedTimePeriod"
+            :year="selectedYear" />
               </div>
-              <div class="chart-content">
-                <div class="chart-placeholder">
-                  <i class="el-icon-s-data"></i>
-                  <p>人群身体热力图</p>
-                  <small>所有人群损伤分布汇总</small>
-                </div>
-              </div>
-            </div>
+
+        <!-- 身体区域损伤图 -->
+        <div class="chart-item">
+          <BodyRegionSunburst 
+            :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
+            :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
+            :season="selectedSeason"
+            :timePeriod="selectedTimePeriod"
+            :year="selectedYear" />
+        </div>
+
+        <!-- 人群身体热力图 -->
+        <div class="chart-item">
+          <div class="placeholder-chart">
+            <div class="placeholder-content">
+              <i class="el-icon-s-data"></i>
+              <h4>人群身体热力图</h4>
+              <p>所有人群损伤分布汇总</p>
+              <small>显示整体人群的损伤分布热力图</small>
           </div>
         </div>
+        </div>
+
       </div>
     </div>
 
@@ -272,12 +224,20 @@
 <script>
 import MonthlyTimeHeatmap from '@/components/MonthlyTimeHeatmap.vue'
 import InjuryCauseChart from '@/components/InjuryCauseChart.vue'
+import ISSDistributionChart from '@/components/ISSDistributionChart.vue'
+import GCSDistributionChart from '@/components/GCSDistributionChart.vue'
+import RTSDistributionChart from '@/components/RTSDistributionChart.vue'
+import BodyRegionSunburst from '@/components/ShowInjuryRecord.vue'
 
 export default {
   name: 'DashboardPage',
   components: {
     MonthlyTimeHeatmap,
-    InjuryCauseChart
+    InjuryCauseChart,
+    ISSDistributionChart,
+    GCSDistributionChart,
+    RTSDistributionChart,
+    BodyRegionSunburst
   },
   data() {
     return {
@@ -340,9 +300,8 @@ export default {
     this.updateTime();
     this.initializeWidgets();
     this.setupEventListeners();
-    this.fetchStatistics();
-    this.fetchMonthlyHeatmapData();
-    this.fetchInjuryCauseData();
+    // 初始化时获取所有数据
+    this.initializeAllData();
   },
   
   beforeDestroy() {
@@ -350,6 +309,17 @@ export default {
   },
   
   methods: {
+    // 初始化所有数据
+    initializeAllData() {
+      console.log('Dashboard: 开始初始化所有数据')
+      // 获取统计数据
+      this.fetchStatistics();
+      // 获取伤因分布数据
+      this.fetchInjuryCauseData();
+      // 其他图表组件会通过props变化自动触发数据获取
+      console.log('Dashboard: 所有数据初始化完成')
+    },
+    
     // 获取统计数据
     fetchStatistics() {
       // 构建查询参数
@@ -381,88 +351,30 @@ export default {
     handleQuery() {
       this.queryLoading = true;
       
+      console.log('Dashboard: 开始查询数据，参数:', {
+        dateRange: this.dateRange,
+        season: this.selectedSeason,
+        timePeriod: this.selectedTimePeriod,
+        year: this.selectedYear
+      });
+      
       // 获取统计数据（四个变量）
       this.fetchStatistics();
-      
-      // 获取患者流量月度时间分布数据
-      this.fetchMonthlyHeatmapData();
       
       // 获取伤因分布数据
       this.fetchInjuryCauseData();
       
+      // 其他图表组件会通过props变化自动重新获取数据
+      // ISS分布图、GCS分布图、RTS分布图等都会通过watch监听props变化自动重新获取数据
+      
       // 模拟查询过程
       setTimeout(() => {
         this.queryLoading = false;
-        
-        console.log('查询参数:', {
-          dateRange: this.dateRange,
-          season: this.selectedSeason,
-          timePeriod: this.selectedTimePeriod,
-          year: this.selectedYear
-        });
-        
         this.$message.success('数据查询完成！');
+        console.log('Dashboard: 查询完成');
       }, 1500);
     },
 
-    // 获取患者流量月度时间分布数据
-    fetchMonthlyHeatmapData() {
-      // 构建查询参数
-      let params = {};
-      
-      // 如果有日期范围，添加到参数中
-      if (this.dateRange && this.dateRange.length === 2) {
-        params.startDate = this.dateRange[0];
-        params.endDate = this.dateRange[1];
-      }
-      
-      // 添加年份参数
-      if (this.selectedYear) {
-        params.year = this.selectedYear;
-      }
-      
-      // 添加季节参数
-      if (this.selectedSeason && this.selectedSeason !== 'all') {
-        // 将季节字符串转换为数字
-        const seasonMap = {
-          'spring': 0,
-          'summer': 1,
-          'autumn': 2,
-          'winter': 3
-        };
-        params.season = seasonMap[this.selectedSeason];
-      }
-      
-      // 添加时间段参数
-      if (this.selectedTimePeriod && this.selectedTimePeriod !== 'all') {
-        // 将时间段字符串转换为数字（与数据库定义一致）
-        const timePeriodMap = {
-          'night': 0,           // 夜间(00:00-07:59)
-          'morning_peak': 1,    // 早高峰(08:00-09:59)
-          'noon_peak': 2,       // 午高峰(10:00-11:59)
-          'afternoon': 3,       // 下午(12:00-16:59)
-          'evening_peak': 4,    // 晚高峰(17:00-19:59)
-          'evening': 5          // 晚上(20:00-23:59)
-        };
-        params.timePeriod = timePeriodMap[this.selectedTimePeriod];
-      }
-      
-      console.log('月度热力图查询参数:', params);
-      
-      // 只发送月度热力图数据请求
-      this.$axios.get('/api/patient-statistics/monthly-heatmap', { params })
-        .then(response => {
-          console.log('月度热力图数据请求成功:', response.data);
-          // 这里可以处理热力图数据
-          if (response.data.success) {
-            console.log('热力图数据:', response.data.data);
-          }
-        })
-        .catch(error => {
-          console.error('月度热力图数据请求失败:', error);
-          this.$message.error('获取月度热力图数据失败');
-        });
-    },
 
     // 获取伤因分布数据
     fetchInjuryCauseData() {
@@ -477,7 +389,31 @@ export default {
       
       // 添加年份参数
       if (this.selectedYear) {
-        params.year = this.selectedYear;
+        params.year = parseInt(this.selectedYear);
+      }
+      
+      // 添加季节参数（转换为数字）
+      if (this.selectedSeason && this.selectedSeason !== 'all') {
+        const seasonMapping = {
+          'spring': 0,  // 春季
+          'summer': 1,  // 夏季
+          'autumn': 2,  // 秋季
+          'winter': 3   // 冬季
+        };
+        params.season = seasonMapping[this.selectedSeason];
+      }
+      
+      // 添加时间段参数（转换为数字）
+      if (this.selectedTimePeriod && this.selectedTimePeriod !== 'all') {
+        const timePeriodMapping = {
+          'night': 0,           // 夜间
+          'morning_peak': 1,    // 早高峰
+          'noon_peak': 2,       // 午高峰
+          'afternoon': 3,       // 下午
+          'evening_peak': 4,    // 晚高峰
+          'evening': 5          // 晚上
+        };
+        params.timePeriod = timePeriodMapping[this.selectedTimePeriod];
       }
       
       this.$axios.get('/api/patient-statistics/injury-cause-distribution', { params })
@@ -687,40 +623,12 @@ export default {
   100% { opacity: 1; }
 }
 
-/* 主要内容区域 */
+/* 主要内容区域 - 全屏布局 */
 .dashboard-main {
   flex: 1;
-  display: flex;
-  overflow: hidden;
-}
-
-/* 左侧控制面板 */
-.control-panel {
-  width: 280px;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
   padding: 20px;
   overflow-y: auto;
-  border-right: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.panel-section {
-  margin-bottom: 25px;
-}
-
-.panel-section h3 {
-  display: flex;
-  align-items: center;
-  font-size: 16px;
-  color: #2c3e50;
-  margin-bottom: 15px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #3498db;
-}
-
-.panel-section h3 i {
-  margin-right: 8px;
-  color: #3498db;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 /* 顶部筛选栏 */
@@ -790,20 +698,30 @@ export default {
   gap: 8px;
 }
 
-/* 右侧可视化区域 */
-.visualization-area {
-  flex: 1;
-  padding: 20px;
-  overflow: hidden;
-  position: relative;
-}
-
 /* 统计卡片 */
 .stats-cards {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 15px;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
+}
+
+/* 图表容器 - 竖列布局 */
+.charts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 0;
+}
+
+/* 图表项目 - 无容器框 */
+.chart-item {
+  width: 100%;
+  min-height: 500px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .stat-card {
@@ -855,344 +773,53 @@ export default {
 }
 
 
-/* 新的紧凑网格布局 */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: auto auto auto auto auto;
-  gap: 15px;
-  padding: 15px;
-  height: calc(100vh - 300px);
-  min-height: 600px;
-}
-
-/* 主热力图 - 占据第一行 */
-.main-heatmap {
-  grid-column: 1;
-  grid-row: 1;
-  min-height: 350px;
-}
-
-/* 饼状图容器 - 第二行，三个并排 */
-.pie-chart-container {
-  grid-column: 1;
-  grid-row: 2;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
-  min-height: 200px;
-}
-
-/* 旭日图容器 - 第三行 */
-.sunburst-container {
-  grid-column: 1;
-  grid-row: 3;
-  min-height: 300px;
-}
-
-/* 伤因分布容器 - 第四行 */
-.injury-cause-container {
-  grid-column: 1;
-  grid-row: 4;
-  min-height: 300px;
-}
-
-/* 身体热力图容器 - 第五行 */
-.body-heatmap-container {
-  grid-column: 1;
-  grid-row: 5;
-  min-height: 250px;
-}
-
-/* 新的紧凑图表框样式 */
-.grid-item {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e0e0e0;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.grid-item:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transform: translateY(-1px);
-}
-
-/* 分隔线样式 */
-.grid-item::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #3498db, transparent);
-  opacity: 0.3;
-}
-
-/* 饼状图框 */
-.pie-chart-box {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 旭日图框 */
-.sunburst-chart-box {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 身体热力图框 */
-.body-heatmap-box {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 科技感图表框（保留原有样式用于兼容） */
-.chart-box {
-  background: linear-gradient(135deg, rgba(30, 60, 114, 0.1), rgba(42, 82, 152, 0.1));
-  border: 2px solid transparent;
-  border-radius: 15px;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-}
-
-.chart-box::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(45deg, #00d4ff, #0099cc, #0066cc, #0033cc);
-  border-radius: 15px;
-  padding: 2px;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  -webkit-mask-composite: xor;
-  z-index: -1;
-}
-
-.chart-box:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
-}
-
-.chart-box:hover::before {
-  background: linear-gradient(45deg, #00d4ff, #0099cc, #0066cc, #0033cc, #00d4ff);
-  animation: borderGlow 2s linear infinite;
-}
-
-@keyframes borderGlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* 紧凑图表标题 */
-.chart-header {
-  padding: 12px 15px;
-  background: linear-gradient(135deg, #3498db, #2980b9);
-  color: white;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.chart-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 3px;
-}
-
-.chart-title i {
-  font-size: 16px;
-  color: white;
-}
-
-.chart-subtitle {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 11px;
-  font-weight: 400;
-}
-
-/* 紧凑图表内容 */
-.chart-content {
-  padding: 15px;
-  height: calc(100% - 60px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f8f9fa;
-}
-
-.chart-placeholder {
-  text-align: center;
-  color: #666;
-}
-
-.chart-placeholder i {
-  font-size: 32px;
-  color: #3498db;
-  margin-bottom: 10px;
-  display: block;
-  opacity: 0.7;
-}
-
-.chart-placeholder p {
-  font-size: 14px;
-  margin-bottom: 5px;
-  color: #333;
-  font-weight: 500;
-}
-
-.chart-placeholder small {
-  font-size: 11px;
-  color: #666;
-}
-
-/* 不规则布局 */
-.chart-1 {
-  grid-column: 1 / 2;
-  grid-row: 1 / 2;
-}
-
-.chart-2 {
-  grid-column: 2 / 3;
-  grid-row: 1 / 2;
-}
-
-.chart-3 {
-  grid-column: 3 / 4;
-  grid-row: 1 / 2;
-}
-
-.chart-4 {
-  grid-column: 1 / 2;
-  grid-row: 2 / 3;
-}
-
-.chart-5 {
-  grid-column: 2 / 3;
-  grid-row: 2 / 3;
-}
-
-.chart-6 {
-  grid-column: 3 / 4;
-  grid-row: 2 / 3;
-}
-
-/* 图表组件 */
-.chart-item {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  overflow: hidden;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.chart-item:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
-}
-
-.chart-item.chart-dragging {
-  z-index: 1000;
-  transform: rotate(1deg) scale(1.02);
-}
-
-.chart-header {
-  height: 45px;
-  background: linear-gradient(135deg, #3498db, #2980b9);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 15px;
-  cursor: move;
-}
-
-.chart-title {
-  display: flex;
-  align-items: center;
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.chart-title i {
-  margin-right: 8px;
-  font-size: 16px;
-}
-
-.chart-controls {
-  display: flex;
-  gap: 5px;
-}
-
-.close-btn {
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  transition: background 0.3s ease;
-}
-
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.chart-content {
-  height: calc(100% - 45px);
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* 占位符图表样式 */
+.placeholder-chart {
+  width: 100%;
+  min-height: 500px;
   background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
 }
 
-.chart-placeholder {
+
+.placeholder-content {
   text-align: center;
   color: #666;
+  padding: 40px;
 }
 
-.chart-placeholder i {
+.placeholder-content i {
   font-size: 48px;
   color: #3498db;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
   display: block;
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
-.chart-placeholder p {
-  font-size: 16px;
-  margin-bottom: 8px;
+.placeholder-content h4 {
+  font-size: 18px;
   color: #2c3e50;
-  font-weight: 500;
+  margin-bottom: 10px;
+  font-weight: 600;
 }
 
-.chart-placeholder small {
-  font-size: 12px;
-  color: #95a5a6;
+.placeholder-content p {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
 }
+
+.placeholder-content small {
+  font-size: 12px;
+  color: #999;
+}
+
+
+
+
 
 /* 底部状态栏 */
 .dashboard-footer {
@@ -1217,18 +844,8 @@ export default {
 }
 
 /* 响应式设计 */
-@media (max-width: 1600px) {
-  .secondary-charts {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
 @media (max-width: 1200px) {
   .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .secondary-charts {
     grid-template-columns: repeat(2, 1fr);
   }
   
@@ -1243,14 +860,6 @@ export default {
     grid-template-columns: 1fr;
   }
   
-  .secondary-charts {
-    grid-template-columns: 1fr;
-  }
-  
-  .main-charts-container {
-    flex-direction: column;
-  }
-  
   .filter-container {
     flex-direction: column;
     align-items: flex-start;
@@ -1259,5 +868,14 @@ export default {
   .filter-item {
     width: 100%;
   }
+  
+  .placeholder-content {
+    padding: 20px;
+  }
+  
+  .placeholder-content i {
+    font-size: 36px;
+  }
 }
 </style>
+

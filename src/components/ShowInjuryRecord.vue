@@ -3,30 +3,15 @@
     <div class="header">
       <h2>身体区域损伤分布旭日图</h2>
       <div class="controls">
-        <el-select v-model="selectedSeason" placeholder="选择季节" style="width: 120px; margin-right: 15px;">
-          <el-option label="全部季节" value="all"></el-option>
-          <el-option label="春季" value="spring"></el-option>
-          <el-option label="夏季" value="summer"></el-option>
-          <el-option label="秋季" value="autumn"></el-option>
-          <el-option label="冬季" value="winter"></el-option>
-        </el-select>
-        
-        <el-select v-model="selectedTimePeriod" placeholder="选择时间段" style="width: 150px; margin-right: 15px;">
-          <el-option label="全部时间段" value="all"></el-option>
-          <el-option label="早高峰(7-9)" value="morning_peak"></el-option>
-          <el-option label="上午(10-12)" value="morning"></el-option>
-          <el-option label="午高峰(11-13)" value="noon_peak"></el-option>
-          <el-option label="下午(14-17)" value="afternoon"></el-option>
-          <el-option label="晚高峰(17-19)" value="evening_peak"></el-option>
-          <el-option label="夜间(20-6)" value="night"></el-option>
-        </el-select>
-        
-        <el-button type="primary" @click="refreshData">查询</el-button>
+        <el-button type="primary" @click="refreshData" :loading="loading">刷新数据</el-button>
       </div>
     </div>
     
     <div class="chart-wrapper">
-      <div ref="sunburstChart" class="chart" style="width: 100%; height: 600px;"></div>
+      <div v-if="loading" class="loading-container">
+        <el-loading :loading="loading" text="加载中..."></el-loading>
+      </div>
+      <div ref="sunburstChart" class="chart" style="width: 100%; height: 600px;" v-show="!loading"></div>
     </div>
     
     <div class="stats">
@@ -62,115 +47,84 @@
 
 <script>
 import * as echarts from 'echarts';
+import axios from 'axios';
 
 export default {
   name: 'BodyRegionSunburst',
+  props: {
+    startDate: {
+      type: String,
+      default: null
+    },
+    endDate: {
+      type: String,
+      default: null
+    },
+    season: {
+      type: String,
+      default: 'all'
+    },
+    timePeriod: {
+      type: String,
+      default: 'all'
+    },
+    year: {
+      type: String,
+      default: null
+    }
+  },
   data() {
     return {
       selectedSeason: 'all',
       selectedTimePeriod: 'all',
       chart: null,
-      // 模拟数据：季节 × 时间段 × 身体区域 × 损伤严重度
-      injuryData: {
-        // 春季数据
-        spring: {
-          morning_peak: {
-            head_neck: { mild: 12, moderate: 8, severe: 4, critical: 1 },
-            face: { mild: 8, moderate: 5, severe: 2, critical: 0 },
-            chest: { mild: 10, moderate: 7, severe: 3, critical: 1 },
-            abdomen: { mild: 6, moderate: 4, severe: 2, critical: 1 },
-            extremities: { mild: 15, moderate: 10, severe: 5, critical: 2 },
-            external: { mild: 20, moderate: 12, severe: 6, critical: 1 }
-          },
-          morning: {
-            head_neck: { mild: 10, moderate: 6, severe: 3, critical: 1 },
-            face: { mild: 6, moderate: 4, severe: 1, critical: 0 },
-            chest: { mild: 8, moderate: 5, severe: 2, critical: 1 },
-            abdomen: { mild: 5, moderate: 3, severe: 1, critical: 0 },
-            extremities: { mild: 12, moderate: 8, severe: 4, critical: 1 },
-            external: { mild: 16, moderate: 10, severe: 5, critical: 1 }
-          },
-          // 其他时间段数据...
-          noon_peak: {
-            head_neck: { mild: 15, moderate: 10, severe: 5, critical: 2 },
-            face: { mild: 10, moderate: 7, severe: 3, critical: 1 },
-            chest: { mild: 12, moderate: 8, severe: 4, critical: 2 },
-            abdomen: { mild: 8, moderate: 5, severe: 3, critical: 1 },
-            extremities: { mild: 18, moderate: 12, severe: 6, critical: 3 },
-            external: { mild: 25, moderate: 15, severe: 8, critical: 2 }
-          },
-          afternoon: {
-            head_neck: { mild: 11, moderate: 7, severe: 3, critical: 1 },
-            face: { mild: 7, moderate: 5, severe: 2, critical: 0 },
-            chest: { mild: 9, moderate: 6, severe: 3, critical: 1 },
-            abdomen: { mild: 6, moderate: 4, severe: 2, critical: 1 },
-            extremities: { mild: 14, moderate: 9, severe: 5, critical: 2 },
-            external: { mild: 18, moderate: 11, severe: 6, critical: 1 }
-          },
-          evening_peak: {
-            head_neck: { mild: 18, moderate: 12, severe: 6, critical: 3 },
-            face: { mild: 12, moderate: 8, severe: 4, critical: 1 },
-            chest: { mild: 15, moderate: 10, severe: 5, critical: 2 },
-            abdomen: { mild: 10, moderate: 7, severe: 4, critical: 2 },
-            extremities: { mild: 22, moderate: 15, severe: 8, critical: 4 },
-            external: { mild: 30, moderate: 18, severe: 10, critical: 3 }
-          },
-          night: {
-            head_neck: { mild: 8, moderate: 5, severe: 2, critical: 1 },
-            face: { mild: 5, moderate: 3, severe: 1, critical: 0 },
-            chest: { mild: 7, moderate: 4, severe: 2, critical: 1 },
-            abdomen: { mild: 4, moderate: 3, severe: 1, critical: 0 },
-            extremities: { mild: 10, moderate: 7, severe: 3, critical: 1 },
-            external: { mild: 12, moderate: 8, severe: 4, critical: 1 }
-          }
-        },
-        // 夏季数据
-        summer: {
-          morning_peak: {
-            head_neck: { mild: 15, moderate: 10, severe: 5, critical: 2 },
-            face: { mild: 10, moderate: 7, severe: 3, critical: 1 },
-            chest: { mild: 12, moderate: 8, severe: 4, critical: 2 },
-            abdomen: { mild: 8, moderate: 5, severe: 3, critical: 1 },
-            extremities: { mild: 20, moderate: 13, severe: 7, critical: 3 },
-            external: { mild: 25, moderate: 15, severe: 8, critical: 2 }
-          },
-          // 其他时间段数据...
-        },
-        // 秋季数据
-        autumn: {
-          morning_peak: {
-            head_neck: { mild: 10, moderate: 7, severe: 3, critical: 1 },
-            face: { mild: 7, moderate: 5, severe: 2, critical: 0 },
-            chest: { mild: 8, moderate: 6, severe: 3, critical: 1 },
-            abdomen: { mild: 6, moderate: 4, severe: 2, critical: 1 },
-            extremities: { mild: 14, moderate: 9, severe: 5, critical: 2 },
-            external: { mild: 18, moderate: 11, severe: 6, critical: 1 }
-          },
-          // 其他时间段数据...
-        },
-        // 冬季数据
-        winter: {
-          morning_peak: {
-            head_neck: { mild: 20, moderate: 13, severe: 7, critical: 3 },
-            face: { mild: 13, moderate: 9, severe: 5, critical: 2 },
-            chest: { mild: 17, moderate: 11, severe: 6, critical: 3 },
-            abdomen: { mild: 12, moderate: 8, severe: 4, critical: 2 },
-            extremities: { mild: 25, moderate: 17, severe: 9, critical: 4 },
-            external: { mild: 35, moderate: 20, severe: 12, critical: 4 }
-          },
-          // 其他时间段数据...
-        }
-      },
+      // 从后端获取的数据
+      injuryData: [],
       totalInjuries: 0,
       mostAffectedRegion: '',
       mostCommonSeverity: '',
-      peakSeasonTime: ''
+      peakSeasonTime: '',
+      loading: false
     };
   },
   mounted() {
-    this.initChart();
-    this.calculateStats();
+    this.updateFilters();
+    this.loadData();
     window.addEventListener('resize', this.handleResize);
+  },
+  watch: {
+    season: {
+      handler() {
+        this.updateFilters();
+        this.loadData();
+      },
+      immediate: false
+    },
+    timePeriod: {
+      handler() {
+        this.updateFilters();
+        this.loadData();
+      },
+      immediate: false
+    },
+    startDate: {
+      handler() {
+        this.loadData();
+      },
+      immediate: false
+    },
+    endDate: {
+      handler() {
+        this.loadData();
+      },
+      immediate: false
+    },
+    year: {
+      handler() {
+        this.loadData();
+      },
+      immediate: false
+    }
   },
   beforeDestroy() {
     if (this.chart) {
@@ -179,6 +133,41 @@ export default {
     window.removeEventListener('resize', this.handleResize);
   },
   methods: {
+    // 更新筛选条件
+    updateFilters() {
+      this.selectedSeason = this.season || 'all';
+      this.selectedTimePeriod = this.timePeriod || 'all';
+    },
+    
+    // 从后端加载数据
+    async loadData() {
+      this.loading = true;
+      try {
+        const params = {
+          season: this.selectedSeason === 'all' ? null : this.getSeasonValue(this.selectedSeason),
+          timePeriod: this.selectedTimePeriod === 'all' ? null : this.getTimePeriodValue(this.selectedTimePeriod),
+          startDate: this.startDate,
+          endDate: this.endDate,
+          year: this.year
+        };
+        
+        const response = await axios.get('/api/patient-statistics/body-region-sunburst', { params });
+        
+        if (response.data.code === 200) {
+          this.injuryData = response.data.data;
+          this.initChart();
+          this.calculateStats();
+        } else {
+          this.$message.error('获取数据失败：' + response.data.message);
+        }
+      } catch (error) {
+        console.error('获取数据失败:', error);
+        this.$message.error('获取数据失败，请检查网络连接');
+      } finally {
+        this.loading = false;
+      }
+    },
+    
     initChart() {
       this.chart = echarts.init(this.$refs.sunburstChart);
       
@@ -243,41 +232,32 @@ export default {
       }
     },
     refreshData() {
-      this.initChart();
-      this.calculateStats();
+      this.loadData();
     },
     getSunburstData() {
-      // 处理季节筛选
-      const seasons = this.selectedSeason === 'all' 
-        ? ['spring', 'summer', 'autumn', 'winter'] 
-        : [this.selectedSeason];
-      
-      // 处理时间段筛选
-      const timePeriods = this.selectedTimePeriod === 'all'
-        ? ['morning_peak', 'morning', 'noon_peak', 'afternoon', 'evening_peak', 'night']
-        : [this.selectedTimePeriod];
-      
-      // 累加符合条件的数据
+      // 处理从后端获取的数据
       const regionData = {
         head_neck: { mild: 0, moderate: 0, severe: 0, critical: 0 },
         face: { mild: 0, moderate: 0, severe: 0, critical: 0 },
         chest: { mild: 0, moderate: 0, severe: 0, critical: 0 },
         abdomen: { mild: 0, moderate: 0, severe: 0, critical: 0 },
-        extremities: { mild: 0, moderate: 0, severe: 0, critical: 0 },
-        external: { mild: 0, moderate: 0, severe: 0, critical: 0 }
+        limbs: { mild: 0, moderate: 0, severe: 0, critical: 0 },
+        body: { mild: 0, moderate: 0, severe: 0, critical: 0 }
       };
       
-      for (const season of seasons) {
-        for (const timePeriod of timePeriods) {
-          const timeData = this.injuryData[season]?.[timePeriod] || {};
-          
-          for (const region in timeData) {
-            for (const severity in timeData[region]) {
-              regionData[region][severity] += timeData[region][severity];
-            }
+      // 处理后端返回的数据
+      this.injuryData.forEach(item => {
+        const region = item.body_region;
+        const severity = item.severity_level;
+        const count = item.injury_count;
+        
+        if (regionData[region]) {
+          const severityKey = this.getSeverityKey(severity);
+          if (severityKey) {
+            regionData[region][severityKey] += count;
           }
         }
-      }
+      });
       
       // 转换为旭日图所需格式
       return [
@@ -326,22 +306,22 @@ export default {
             },
             {
               name: '四肢',
-              value: this.sumSeverities(regionData.extremities),
+              value: this.sumSeverities(regionData.limbs),
               children: [
-                { name: '轻度', value: regionData.extremities.mild, itemStyle: { color: '#c6e48b' } },
-                { name: '中度', value: regionData.extremities.moderate, itemStyle: { color: '#7bc96f' } },
-                { name: '重度', value: regionData.extremities.severe, itemStyle: { color: '#49af64' } },
-                { name: '危重', value: regionData.extremities.critical, itemStyle: { color: '#239a3b' } }
+                { name: '轻度', value: regionData.limbs.mild, itemStyle: { color: '#c6e48b' } },
+                { name: '中度', value: regionData.limbs.moderate, itemStyle: { color: '#7bc96f' } },
+                { name: '重度', value: regionData.limbs.severe, itemStyle: { color: '#49af64' } },
+                { name: '危重', value: regionData.limbs.critical, itemStyle: { color: '#239a3b' } }
               ]
             },
             {
               name: '体表',
-              value: this.sumSeverities(regionData.external),
+              value: this.sumSeverities(regionData.body),
               children: [
-                { name: '轻度', value: regionData.external.mild, itemStyle: { color: '#c6e48b' } },
-                { name: '中度', value: regionData.external.moderate, itemStyle: { color: '#7bc96f' } },
-                { name: '重度', value: regionData.external.severe, itemStyle: { color: '#49af64' } },
-                { name: '危重', value: regionData.external.critical, itemStyle: { color: '#239a3b' } }
+                { name: '轻度', value: regionData.body.mild, itemStyle: { color: '#c6e48b' } },
+                { name: '中度', value: regionData.body.moderate, itemStyle: { color: '#7bc96f' } },
+                { name: '重度', value: regionData.body.severe, itemStyle: { color: '#49af64' } },
+                { name: '危重', value: regionData.body.critical, itemStyle: { color: '#239a3b' } }
               ]
             }
           ]
@@ -435,6 +415,43 @@ export default {
         'night': '夜间'
       };
       return mapping[timePeriodKey] || '';
+    },
+    
+    // 获取季节对应的数值
+    getSeasonValue(seasonKey) {
+      const mapping = {
+        'spring': 0,
+        'summer': 1,
+        'autumn': 2,
+        'winter': 3
+      };
+      return mapping[seasonKey];
+    },
+    
+    // 获取时间段对应的数值
+    getTimePeriodValue(timePeriodKey) {
+      const mapping = {
+        'night': 0,
+        'morning_peak': 1,
+        'noon_peak': 2,
+        'afternoon': 3,
+        'evening_peak': 4,
+        'evening': 5
+      };
+      return mapping[timePeriodKey];
+    },
+    
+    // 获取严重度对应的键值
+    getSeverityKey(severityLevel) {
+      const mapping = {
+        '1': 'mild',
+        '2': 'moderate', 
+        '3': 'severe',
+        '4': 'critical',
+        '5': 'critical',
+        '6': 'critical'
+      };
+      return mapping[severityLevel];
     }
   }
 };
