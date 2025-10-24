@@ -192,14 +192,12 @@
 
         <!-- 人群身体热力图 -->
         <div class="chart-item">
-          <div class="placeholder-chart">
-            <div class="placeholder-content">
-              <i class="el-icon-s-data"></i>
-              <h4>人群身体热力图</h4>
-              <p>所有人群损伤分布汇总</p>
-              <small>显示整体人群的损伤分布热力图</small>
-          </div>
-        </div>
+          <PopulationBodyHeatmapWidget 
+            :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
+            :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
+            :season="selectedSeason"
+            :timePeriod="selectedTimePeriod"
+            :year="selectedYear" />
         </div>
 
       </div>
@@ -227,7 +225,8 @@ import InjuryCauseChart from '@/components/InjuryCauseChart.vue'
 import ISSDistributionChart from '@/components/ISSDistributionChart.vue'
 import GCSDistributionChart from '@/components/GCSDistributionChart.vue'
 import RTSDistributionChart from '@/components/RTSDistributionChart.vue'
-import BodyRegionSunburst from '@/components/ShowInjuryRecord.vue'
+import BodyRegionSunburst from '@/components/BodyRegionSunburstWidget.vue'
+import PopulationBodyHeatmapWidget from '@/components/PopulationBodyHeatmapWidget.vue'
 
 export default {
   name: 'DashboardPage',
@@ -237,7 +236,8 @@ export default {
     ISSDistributionChart,
     GCSDistributionChart,
     RTSDistributionChart,
-    BodyRegionSunburst
+    BodyRegionSunburst,
+    PopulationBodyHeatmapWidget
   },
   data() {
     return {
