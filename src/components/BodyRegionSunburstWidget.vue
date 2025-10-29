@@ -1,35 +1,49 @@
 <template>
   <div class="body-region-sunburst-widget">
-    <div class="widget-header">
-      <h3>身体区域损伤分布</h3>
+    <!-- 右上角标题 -->
+    <div class="chart-title-overlay">
+      <div class="chart-title">
+        <i>🫀</i>
+        身体区域损伤图
+      </div>
     </div>
     
-    <div class="widget-content">
-      <div class="chart-layout">
-        <div class="chart-container">
-          <div v-if="loading" class="loading-container">
-            <el-loading :loading="loading" text="加载中..."></el-loading>
-          </div>
-          <div ref="sunburstChart" class="chart" v-show="!loading"></div>
+    <!-- 整体内容区域 - 可滚动 -->
+    <div class="content-scroll-area">
+      <!-- 核心旭日图区域 -->
+      <div class="chart-container">
+        <div v-if="loading" class="loading-container">
+          <el-loading :loading="loading" text="加载中..."></el-loading>
         </div>
-        
-        <div class="info-panel">
-          <div class="region-stats">
-            <div v-for="region in regionStats" :key="region.name" class="region-item">
+        <div ref="sunburstChart" class="chart" v-show="!loading"></div>
+      </div>
+      
+      <!-- 身体区域损伤统计说明区域（位于旭日图下方） -->
+      <div class="description-area">
+        <div class="description-container">
+          <div class="description-content">
+            <div v-for="region in regionStats" :key="region.name" class="description-item">
               <div class="region-header">
                 <div class="region-name">{{ region.name }}</div>
                 <div class="region-total">{{ region.total }}例</div>
               </div>
               <div class="severity-breakdown">
                 <div v-for="severity in region.severities" :key="severity.type" class="severity-item">
-                  <div class="severity-label">{{ severity.name }}</div>
-                  <div class="severity-value">{{ severity.count }}/{{ severity.percentage }}%</div>
+                  <span class="severity-color" :style="{ backgroundColor: severity.color }"></span>
+                  <span class="severity-label">{{ severity.name }}:</span>
+                  <span class="severity-value">{{ severity.count }}例 ({{ severity.percentage }}%)</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
+    
+    <!-- 加载状态 -->
+    <div v-if="loading" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <span>正在加载数据...</span>
     </div>
   </div>
 </template>
@@ -161,8 +175,8 @@ export default {
       const chartContainer = this.$refs.sunburstChart;
       if (chartContainer) {
         chartContainer.style.width = '100%';
-        chartContainer.style.height = '400px';
-        chartContainer.style.minHeight = '400px';
+        chartContainer.style.height = '280px';
+        chartContainer.style.minHeight = '280px';
       }
       
       this.chart = echarts.init(chartContainer);
@@ -171,6 +185,7 @@ export default {
       console.log('旭日图数据:', sunburstData);
       
       const option = {
+        backgroundColor: 'transparent',
         tooltip: {
           trigger: 'item',
           formatter: function (params) {
@@ -180,7 +195,7 @@ export default {
         series: {
           type: 'sunburst',
           data: sunburstData,
-          radius: ['10%', '90%'],
+          radius: ['8%', '85%'],
           center: ['50%', '50%'],
           label: {
             rotate: 'radial',
@@ -200,8 +215,8 @@ export default {
           levels: [
             {},
             {
-              r0: '15%',
-              r: '35%',
+              r0: '12%',
+              r: '32%',
               itemStyle: {
                 borderWidth: 2
               },
@@ -212,8 +227,8 @@ export default {
               }
             },
             {
-              r0: '35%',
-              r: '70%',
+              r0: '32%',
+              r: '65%',
               label: {
                 align: 'right',
                 show: true,
@@ -221,8 +236,8 @@ export default {
               }
             },
             {
-              r0: '70%',
-              r: '85%',
+              r0: '65%',
+              r: '80%',
               label: {
                 position: 'outside',
                 padding: 3,
@@ -505,140 +520,263 @@ export default {
 </script>
 
 <style scoped>
+/* 标题样式 */
+.chart-title-overlay {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  z-index: 10;
+}
+
+.chart-title {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #333;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.chart-title i {
+  margin-right: 4px;
+  font-size: 14px;
+}
+
 .body-region-sunburst-widget {
-  background-color: #fff;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  position: relative;
+  width: 100%;
   height: 100%;
+  background: transparent;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
-.widget-header {
-  padding: 15px 20px;
-  border-bottom: 1px solid #ebeef5;
-}
-
-.widget-header h3 {
-  margin: 0;
-  color: #303133;
-  font-size: 16px;
-}
-
-.widget-content {
+/* 整体内容滚动区域 */
+.content-scroll-area {
   flex: 1;
-  padding: 15px;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+  min-height: 0;
 }
 
-.chart-layout {
-  display: flex;
-  gap: 20px;
-  height: 100%;
+.content-scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.content-scroll-area::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+}
+
+.content-scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(64, 158, 255, 0.3);
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+.content-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(64, 158, 255, 0.5);
 }
 
 .chart-container {
-  flex: 1;
-  min-height: 400px;
-  position: relative;
+  width: 100%;
+  height: 280px;
+  padding: 0;
+  flex-shrink: 0;
+  background: transparent;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .chart {
-  width: 100% !important;
-  height: 400px !important;
-  border-radius: 4px;
+  width: 100%;
+  height: 100%;
 }
 
-.info-panel {
-  width: 300px;
-  max-height: 500px;
-  overflow-y: auto;
-  padding: 15px;
-  background-color: #f8f9fa;
+.loading-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  z-index: 10;
+}
+
+/* 身体区域损伤统计说明区域 */
+.description-area {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
   border-radius: 8px;
-  border-left: 4px solid #409EFF;
+  margin-top: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
-.region-stats {
+.description-container {
+  padding: 8px 12px;
+}
+
+.description-content {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 8px;
 }
 
-.region-item {
-  background: white;
+.description-item {
+  background: rgba(255, 255, 255, 0.7);
   border-radius: 6px;
-  padding: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.description-item:hover {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
 
 .region-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e4e7ed;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .region-name {
-  font-size: 14px;
-  font-weight: bold;
-  color: #303133;
+  color: #409EFF;
+  font-weight: 600;
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
 .region-total {
-  font-size: 16px;
-  font-weight: bold;
   color: #409EFF;
+  font-weight: 700;
+  font-size: 11px;
+  background: rgba(64, 158, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 10px;
+  flex-shrink: 0;
 }
 
 .severity-breakdown {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 .severity-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 4px 8px;
-  background-color: #f5f7fa;
+  gap: 4px;
+  padding: 3px 6px;
+  background: rgba(248, 249, 250, 0.8);
   border-radius: 4px;
-  font-size: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.severity-item:hover {
+  background: rgba(248, 249, 250, 1);
+  transform: translateY(-1px);
+}
+
+.severity-color {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .severity-label {
-  color: #606266;
+  color: #6c757d;
   font-weight: 500;
+  font-size: 10px;
+  flex-shrink: 0;
 }
 
 .severity-value {
   color: #409EFF;
-  font-weight: bold;
+  font-weight: 600;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+/* 加载状态 */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #409EFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 @media (max-width: 768px) {
-  .chart-layout {
-    flex-direction: column;
+  .chart-container {
+    height: 250px;
   }
   
-  .info-panel {
-    width: 100%;
-    max-height: 300px;
+  .chart {
+    height: 250px !important;
   }
   
-  .region-stats {
-    gap: 10px;
+  .description-container {
+    padding: 6px 8px;
   }
   
-  .region-item {
-    padding: 10px;
+  .description-content {
+    gap: 6px;
+  }
+  
+  .description-item {
+    padding: 6px 8px;
   }
   
   .severity-breakdown {
-    grid-template-columns: 1fr;
     gap: 4px;
+  }
+  
+  .severity-item {
+    padding: 2px 4px;
   }
 }
 </style>

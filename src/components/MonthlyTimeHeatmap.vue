@@ -3,14 +3,14 @@
     <div class="chart-header">
       <div class="chart-title">
         <i class="el-icon-data-line"></i>
-        <span>病例时间统计图</span>
+        <span>患者流量月度时间分布热点图</span>
       </div>
       <div class="chart-subtitle">患者流量月度时间分布</div>
     </div>
     
     <div class="chart-content">
       <div class="chart-wrapper">
-        <div ref="heatmapChart" class="chart" style="width: 100%; height: 280px;"></div>
+        <div ref="heatmapChart" class="chart" style="width: 100%; height: 300px;"></div>
       </div>
       
       <div class="legend">
@@ -39,12 +39,12 @@
     </div>
     
     <!-- 加载状态 -->
-    <div v-if="loading" class="loading-container">
-      <el-loading :loading="loading" text="正在加载数据..."></el-loading>
+    <div v-if="isLoading" class="loading-container">
+      <el-loading :loading="isLoading" text="正在加载数据..."></el-loading>
     </div>
     
     <!-- 无数据状态 -->
-    <div v-if="!hasData && !loading" class="no-data">
+    <div v-if="!hasData && !isLoading" class="no-data">
       <i class="el-icon-warning"></i>
       <span>暂无数据</span>
     </div>
@@ -73,7 +73,7 @@ export default {
       peakTime: '',
       peakMonth: '',
       hasData: false,
-      loading: true
+      isLoading: true
     };
   },
   mounted() {
@@ -82,6 +82,24 @@ export default {
   },
   
   props: {
+    data: {
+      type: Array,
+      default: () => []
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    },
+    filters: {
+      type: Object,
+      default: () => ({
+        startDate: '',
+        endDate: '',
+        season: '',
+        timePeriod: '',
+        year: ''
+      })
+    },
     selectedYear: {
       type: [String, Number],
       default: () => new Date().getFullYear()
@@ -105,6 +123,26 @@ export default {
   },
   
   watch: {
+    data: {
+      handler(newData) {
+        if (newData && newData.length > 0) {
+          this.processHeatmapData(newData);
+          this.$nextTick(() => {
+            this.initChart();
+            this.calculateStats();
+          });
+        }
+      },
+      immediate: true,
+      deep: true
+    },
+    filters: {
+      handler() {
+        this.loadData();
+      },
+      immediate: false,
+      deep: true
+    },
     selectedYear: {
       handler() {
         this.loadData();
@@ -145,7 +183,7 @@ export default {
   methods: {
     async loadData() {
       try {
-        this.loading = true;
+        this.isLoading = true;
         
         // 构建查询参数
         const params = {
@@ -196,7 +234,7 @@ export default {
           this.processHeatmapData(heatmapResponse.data.data);
         }
         
-        this.loading = false;
+        this.isLoading = false;
         
         // 初始化图表
         this.$nextTick(() => {
@@ -206,7 +244,7 @@ export default {
         
       } catch (error) {
         console.error('加载热力图数据失败:', error);
-        this.loading = false;
+        this.isLoading = false;
         this.hasData = false;
         this.$message.error('加载热力图数据失败: ' + error.message);
       }
@@ -287,10 +325,10 @@ export default {
           }
         },
         grid: {
-          left: '3%',
-          right: '4%',
-          bottom: '10%',
-          top: '10%',
+          left: '5%',
+          right: '5%',
+          bottom: '15%',
+          top: '15%',
           containLabel: true
         },
         xAxis: {
@@ -301,7 +339,8 @@ export default {
           },
           axisLabel: {
             fontWeight: 'bold',
-            fontSize: 12
+            fontSize: 11,
+            rotate: 0
           }
         },
         yAxis: {
@@ -312,7 +351,8 @@ export default {
           },
           axisLabel: {
             fontWeight: 'bold',
-            fontSize: 12
+            fontSize: 11,
+            rotate: 0
           }
         },
         visualMap: {

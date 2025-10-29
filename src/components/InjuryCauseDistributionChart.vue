@@ -10,7 +10,7 @@
     
     <div class="chart-content">
       <div class="chart-wrapper">
-        <div ref="chart" class="chart" style="width: 100%; height: 400px;"></div>
+        <div ref="chart" class="chart" style="width: 100%; height: 250px;"></div>
       </div>
     </div>
     
@@ -44,6 +44,24 @@ import * as echarts from 'echarts'
 export default {
   name: 'InjuryCauseDistributionChart',
   props: {
+    data: {
+      type: Array,
+      default: () => []
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    },
+    filters: {
+      type: Object,
+      default: () => ({
+        startDate: '',
+        endDate: '',
+        season: '',
+        timePeriod: '',
+        year: ''
+      })
+    },
     selectedYear: {
       type: [String, Number],
       default: new Date().getFullYear()
@@ -71,6 +89,23 @@ export default {
     window.removeEventListener('resize', this.handleResize)
   },
   watch: {
+    data: {
+      handler(newData) {
+        if (newData && newData.length > 0) {
+          this.processData(newData);
+          this.updateChart();
+        }
+      },
+      immediate: true,
+      deep: true
+    },
+    filters: {
+      handler() {
+        this.fetchData();
+      },
+      immediate: false,
+      deep: true
+    },
     selectedYear() {
       this.fetchData()
     }
@@ -79,8 +114,28 @@ export default {
     async fetchData() {
       try {
         console.log('InjuryCauseDistributionChart: 开始获取月度伤因数据')
+        
+        // 构建查询参数
+        const params = {
+          year: this.selectedYear || this.filters.year
+        };
+        
+        // 添加其他筛选参数
+        if (this.filters.startDate) {
+          params.startDate = this.filters.startDate;
+        }
+        if (this.filters.endDate) {
+          params.endDate = this.filters.endDate;
+        }
+        if (this.filters.season) {
+          params.season = this.filters.season;
+        }
+        if (this.filters.timePeriod) {
+          params.timePeriod = this.filters.timePeriod;
+        }
+        
         const response = await this.$axios.get('/api/patient-statistics/injury-cause-distribution', {
-          params: { year: this.selectedYear }
+          params: params
         })
         
         console.log('InjuryCauseDistributionChart: API响应数据:', response.data)
@@ -108,7 +163,7 @@ export default {
       this.totalPatients = 0
       
       // 为每个伤因类型创建系列数据
-      rawData.forEach((causeData, index) => {
+      rawData.forEach((causeData) => {
         const seriesData = {
           name: causeData.cause_name,
           type: 'bar',
@@ -225,14 +280,19 @@ export default {
         },
         legend: {
           data: this.legendData.map(item => item.name),
-          top: 30,
-          left: 'center'
+          top: 10,
+          left: 'center',
+          itemWidth: 12,
+          itemHeight: 8,
+          textStyle: {
+            fontSize: 10
+          }
         },
         grid: {
-          left: '3%',
-          right: '4%',
-          bottom: '3%',
-          top: '15%',
+          left: '5%',
+          right: '5%',
+          bottom: '10%',
+          top: '20%',
           containLabel: true
         },
         xAxis: {

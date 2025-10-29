@@ -1,60 +1,60 @@
 <template>
   <div class="gcs-distribution-chart">
-    <div class="chart-header">
+    <!-- 右上角标题 -->
+    <div class="chart-title-overlay">
       <div class="chart-title">
-        <i class="el-icon-pie-chart"></i>
-        <span>GCS评分分布饼图</span>
+        <i>🧠</i>
+        GCS分布图
       </div>
-      <div class="chart-subtitle">格拉斯哥昏迷评分分析</div>
     </div>
     
-    <div class="chart-content">
-      <div v-if="loading" class="loading-container">
-        <i class="el-icon-loading"></i>
-        <p>加载中...</p>
+    <!-- 整体内容区域 - 可滚动 -->
+    <div class="content-scroll-area">
+      <!-- 核心圆饼图区域 -->
+      <div class="chart-container">
+        <div ref="chartContainer" class="chart"></div>
       </div>
       
-      <div v-else-if="error" class="error-container">
-        <i class="el-icon-warning"></i>
-        <p>{{ error }}</p>
-      </div>
       
-      <div v-else class="chart-container">
-        <!-- 空数据提示 -->
-        <div v-if="chartData.length === 0 || totalPatients === 0" class="empty-data">
-          <i class="el-icon-info"></i>
-          <h4>暂无GCS数据</h4>
-          <p>当前筛选条件下没有找到GCS评分数据</p>
-          <small>请尝试调整筛选条件或选择其他时间范围</small>
-        </div>
-        
-        <!-- 甜甜圈图 -->
-        <div v-else class="chart-wrapper">
-          <div ref="chartContainer" class="donut-chart"></div>
-          
-          <!-- 图例（包含总计） -->
-          <div class="chart-legend">
-            <!-- GCS等级图例 -->
-            <div v-for="(item, index) in chartData" :key="index" class="legend-item">
-              <div class="legend-color" :style="{ backgroundColor: item.color }"></div>
-              <div class="legend-text">
-                <div class="legend-name">{{ item.name }}</div>
-                <div class="legend-value">{{ item.value }}人 ({{ item.percentage }}%)</div>
-              </div>
+      <!-- GCS评分说明区域（位于圆饼图下方） -->
+      <div class="description-area">
+        <div class="description-container">
+          <div class="description-content">
+            <div class="description-item">
+              <span class="description-color" style="background-color: #52C41A;"></span>
+              <span class="description-label">意识清楚:</span>
+              <span class="description-text">15分</span>
+              <span class="description-count" v-if="getCountByColor('#52C41A')">{{ getCountByColor('#52C41A') }}人 ({{ getPercentageByColor('#52C41A') }}%)</span>
             </div>
-            
-            <!-- 总计项 -->
-            <div class="legend-item total-item">
-              <div class="legend-color total-color"></div>
-              <div class="legend-text">
-                <div class="legend-name">总计</div>
-                <div class="legend-value">{{ totalPatients }}人</div>
-              </div>
+            <div class="description-item">
+              <span class="description-color" style="background-color: #1890FF;"></span>
+              <span class="description-label">轻度意识障碍:</span>
+              <span class="description-text">12-14分</span>
+              <span class="description-count" v-if="getCountByColor('#1890FF')">{{ getCountByColor('#1890FF') }}人 ({{ getPercentageByColor('#1890FF') }}%)</span>
+            </div>
+            <div class="description-item">
+              <span class="description-color" style="background-color: #FA8C16;"></span>
+              <span class="description-label">中度意识障碍:</span>
+              <span class="description-text">9-11分</span>
+              <span class="description-count" v-if="getCountByColor('#FA8C16')">{{ getCountByColor('#FA8C16') }}人 ({{ getPercentageByColor('#FA8C16') }}%)</span>
+            </div>
+            <div class="description-item">
+              <span class="description-color" style="background-color: #F5222D;"></span>
+              <span class="description-label">昏迷:</span>
+              <span class="description-text">3-8分</span>
+              <span class="description-count" v-if="getCountByColor('#F5222D')">{{ getCountByColor('#F5222D') }}人 ({{ getPercentageByColor('#F5222D') }}%)</span>
             </div>
           </div>
         </div>
       </div>
     </div>
+    
+    <!-- 加载状态 -->
+    <div v-if="loading" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <span>正在加载数据...</span>
+    </div>
+    
   </div>
 </template>
 
@@ -293,7 +293,7 @@ export default {
           {
             name: 'GCS分布',
             type: 'pie',
-            radius: ['40%', '70%'], // 甜甜圈图
+            radius: ['35%', '65%'], // 甜甜圈图
             center: ['50%', '50%'],
             avoidLabelOverlap: false,
             itemStyle: {
@@ -307,7 +307,7 @@ export default {
               formatter: function(params) {
                 return `${params.name}\n${params.value}人\n${params.percent}%`
               },
-              fontSize: 12,
+              fontSize: 10,
               fontWeight: 'bold'
             },
             labelLine: {
@@ -344,19 +344,21 @@ export default {
       if (!this.chartInstance) return
       
       const option = {
-        title: {
-          text: '暂无数据',
-          left: 'center',
-          top: 'center',
-          textStyle: {
-            color: '#999',
-            fontSize: 16
-          }
-        },
         series: []
       }
       
       this.chartInstance.setOption(option, true)
+    },
+    
+    getCountByColor(color) {
+      const item = this.chartData.find(item => item.color === color)
+      return item ? item.value : 0
+    },
+    
+    getPercentageByColor(color) {
+      const count = this.getCountByColor(color)
+      if (this.totalPatients === 0) return 0
+      return ((count / this.totalPatients) * 100).toFixed(1)
     },
     
     handleResize() {
@@ -382,193 +384,194 @@ export default {
 
 <style scoped>
 .gcs-distribution-chart {
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  min-height: 500px;
 }
 
-.chart-header {
-  padding: 20px 20px 0;
-  border-bottom: 1px solid #f0f0f0;
+.chart-title-overlay {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  z-index: 10;
 }
 
 .chart-title {
-  display: flex;
-  align-items: center;
-  font-size: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
+  color: #2c3e50;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .chart-title i {
-  margin-right: 8px;
-  color: #1890ff;
-  font-size: 20px;
-}
-
-.chart-subtitle {
+  margin-right: 4px;
   font-size: 14px;
-  color: #666;
-  margin-bottom: 20px;
 }
 
-.chart-content {
-  padding: 20px;
+/* 整体内容滚动区域 */
+.content-scroll-area {
+  flex: 1;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+  min-height: 0;
 }
 
-.loading-container,
-.error-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 300px;
-  color: #999;
+.content-scroll-area::-webkit-scrollbar {
+  width: 6px;
 }
 
-.loading-container i,
-.error-container i {
-  font-size: 32px;
-  margin-bottom: 16px;
+.content-scroll-area::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
 }
 
-.error-container {
-  color: #ff4d4f;
+.content-scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(52, 152, 219, 0.3);
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+.content-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(52, 152, 219, 0.5);
 }
 
 .chart-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.donut-chart {
   width: 100%;
-  height: 400px;
-  position: relative;
+  height: 320px;
+  padding: 0;
+  flex-shrink: 0;
 }
 
-/* 图表包装器 */
-.chart-wrapper {
-  position: relative;
+.chart {
   width: 100%;
   height: 100%;
 }
 
-/* 总计项样式 */
-.total-item {
-  border-top: 1px solid #e8e8e8;
-  padding-top: 12px;
+/* GCS评分说明区域 */
+.description-area {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+  border-radius: 8px;
   margin-top: 8px;
-}
-
-.total-color {
-  background: linear-gradient(135deg, #1890ff, #40a9ff) !important;
-  border: 2px solid #1890ff;
-}
-
-.total-item .legend-name {
-  color: #1890ff;
-  font-weight: 600;
-}
-
-.total-item .legend-value {
-  color: #1890ff;
-  font-weight: 500;
-}
-
-.chart-legend {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.legend-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  overflow: hidden;
   flex-shrink: 0;
 }
 
-.legend-text {
+.description-container {
+  padding: 8px 12px;
+}
+
+.description-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.description-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.description-item:hover {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.description-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.description-label {
+  color: #3498db;
+  font-weight: 600;
+  font-size: 10px;
+  flex-shrink: 0;
+  min-width: 60px;
+}
+
+.description-text {
+  color: #2c3e50;
+  font-size: 10px;
+  line-height: 1.4;
   flex: 1;
 }
 
-.legend-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 2px;
+.description-count {
+  color: #3498db;
+  font-weight: 700;
+  font-size: 10px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
-.legend-value {
-  font-size: 12px;
-  color: #666;
-}
-
-/* 空数据提示样式 */
-.empty-data {
+/* 加载状态 */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  z-index: 10;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #409EFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.empty-data {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   text-align: center;
-  color: #666;
-  background: #fafafa;
-  border-radius: 8px;
-  margin: 20px;
+  color: #909399;
+  font-size: 14px;
 }
 
 .empty-data i {
-  font-size: 48px;
-  color: #ccc;
-  margin-bottom: 16px;
-}
-
-.empty-data h4 {
-  font-size: 18px;
-  color: #333;
+  font-size: 32px;
   margin-bottom: 8px;
-  font-weight: 500;
-}
-
-.empty-data p {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 8px;
-  line-height: 1.5;
-}
-
-.empty-data small {
-  font-size: 12px;
-  color: #999;
-  line-height: 1.4;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .donut-chart {
-    height: 300px;
-  }
-}
-
-@media (max-width: 480px) {
-  .chart-header {
-    padding: 16px 16px 0;
-  }
-  
-  .chart-content {
-    padding: 16px;
-  }
+  display: block;
 }
 </style>

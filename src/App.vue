@@ -12,14 +12,26 @@
             <i class="el-icon-location"></i>
             <span>地图热力图</span>
           </router-link>
-          <router-link to="/dashboard" class="nav-item" :class="{ active: $route.path === '/dashboard' }">
-            <i class="el-icon-s-data"></i>
-            <span>数据驾驶舱</span>
+          <router-link to="/bigscreen" class="nav-item" :class="{ active: $route.path === '/bigscreen' }">
+            <i class="el-icon-monitor"></i>
+            <span>后台可视化大屏</span>
+          </router-link>
+          <router-link to="/patient-list" class="nav-item" :class="{ active: $route.path === '/patient-list' }">
+            <i class="el-icon-user"></i>
+            <span>病人详情信息</span>
+          </router-link>
+          <router-link to="/hourly" class="nav-item" :class="{ active: $route.path === '/hourly' }">
+            <i class="el-icon-time"></i>
+            <span>每小时患者数量</span>
+          </router-link>
+          <router-link to="/monthly-heatmap" class="nav-item" :class="{ active: $route.path === '/monthly-heatmap' }">
+            <i class="el-icon-date"></i>
+            <span>每月地图热力图</span>
           </router-link>
         </div>
         <div class="nav-actions">
           <el-button size="small" @click="toggleFullscreen">
-            <i class="el-icon-full-screen"></i>
+            <i :class="showNavigation ? 'el-icon-full-screen' : 'el-icon-copy-document'"></i>
           </el-button>
           <el-button size="small" @click="showSettings">
             <i class="el-icon-setting"></i>
@@ -30,6 +42,11 @@
     
     <!-- 主要内容区域 -->
     <main class="main-content" :class="{ 'with-nav': showNavigation }">
+      <!-- 全屏模式下的退出按钮 -->
+      <div v-if="!showNavigation" class="exit-fullscreen-btn" @click="toggleFullscreen">
+        <i class="el-icon-copy-document"></i>
+        <span>退出全屏</span>
+      </div>
       <router-view></router-view>
     </main>
   </div>
@@ -43,12 +60,26 @@ export default {
       showNavigation: true
     }
   },
+  mounted() {
+    // 添加键盘事件监听
+    document.addEventListener('keydown', this.handleKeydown);
+  },
+  beforeDestroy() {
+    // 移除键盘事件监听
+    document.removeEventListener('keydown', this.handleKeydown);
+  },
   methods: {
     toggleFullscreen() {
       this.showNavigation = !this.showNavigation;
     },
     showSettings() {
       this.$message.info('设置功能开发中...');
+    },
+    handleKeydown(event) {
+      // ESC键退出全屏
+      if (event.key === 'Escape' && !this.showNavigation) {
+        this.showNavigation = true;
+      }
     }
   }
 }
@@ -109,18 +140,21 @@ body {
 
 .nav-menu {
   display: flex;
-  gap: 20px;
+  gap: 15px;
+  flex-wrap: wrap;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 8px 16px;
+  padding: 8px 12px;
   color: rgba(255, 255, 255, 0.8);
   text-decoration: none;
   border-radius: 8px;
   transition: all 0.3s ease;
   font-weight: 500;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .nav-item:hover {
@@ -166,6 +200,37 @@ body {
 
 .main-content.with-nav {
   min-height: calc(100vh - 60px);
+}
+
+/* 退出全屏按钮样式 */
+.exit-fullscreen-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 9999;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.exit-fullscreen-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.exit-fullscreen-btn i {
+  font-size: 16px;
 }
 
 /* 响应式设计 */

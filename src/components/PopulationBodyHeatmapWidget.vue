@@ -1,37 +1,42 @@
 <template>
   <div class="population-body-heatmap-widget">
-    <!-- 标题 -->
-    <div class="widget-header">
-      <h3>人群身体热力图</h3>
+    <!-- 右上角标题 -->
+    <div class="chart-title-overlay">
+      <div class="chart-title">
+        <i>👥</i>
+        人群身体热力图
+      </div>
     </div>
-
-    <!-- 热力图展示区域 -->
-    <div class="heatmap-container">
-      <div class="human-figure-container">
+    
+    <!-- 整体内容滚动区域 -->
+    <div class="content-scroll-area">
+      <!-- 核心人体图区域 -->
+      <div class="chart-container">
         <div ref="svgContainer" class="human-figure">
           <p v-if="!svgLoaded" class="svg-placeholder">加载人体图中...</p>
         </div>
-      </div>
-      
-      <!-- 热力图数据展示 -->
-      <div class="heatmap-data">
-        <div class="data-summary">
-          <h4>热力图数据</h4>
-          <div class="summary-stats">
-            <div class="stat-item">
-              <span class="stat-label">总患者数：</span>
-              <span class="stat-value">{{ totalPatients }}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">平均严重程度：</span>
-              <span class="stat-value">{{ averageSeverity.toFixed(2) }}</span>
+        
+        <!-- 颜色等级图例 - 位于左下角 -->
+        <div class="color-legend-overlay">
+          <div class="legend-items">
+            <div v-for="i in 7" :key="i" class="legend-item">
+              <span class="color-box" :style="{ backgroundColor: getSeverityColor(i-1) }"></span>
+              <span class="level-label">等级 {{ i-1 }}</span>
             </div>
           </div>
         </div>
         
-        <div class="body-parts-data">
-          <h4>各部位热度数据</h4>
-          <div class="parts-list">
+        <!-- 加载状态 -->
+        <div v-if="loading" class="loading-overlay">
+          <div class="loading-spinner"></div>
+          <p>加载热力图数据中...</p>
+        </div>
+      </div>
+      
+      <!-- 各部位热度数据区域（位于人体图下方） -->
+      <div class="body-parts-area">
+        <div class="body-parts-container">
+          <div class="body-parts-content">
             <div 
               v-for="part in bodyPartsData" 
               :key="part.body_part"
@@ -58,17 +63,6 @@
                   ></div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- 颜色图例 -->
-        <div class="color-legend">
-          <h4>严重程度颜色指示</h4>
-          <div class="legend-items">
-            <div v-for="i in 7" :key="i" class="legend-item">
-              <span class="color-box" :style="{ backgroundColor: getSeverityColor(i-1) }"></span>
-              <span class="level-label">等级 {{ i-1 }}</span>
             </div>
           </div>
         </div>
@@ -109,8 +103,6 @@ export default {
       svgElement: null,
       highlightedPart: null,
       bodyPartsData: [],
-      totalPatients: 0,
-      averageSeverity: 0,
       // SVG字符串 - 复制自InjuryFigureModal.vue
       svgStr: `<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
         <g>
@@ -327,7 +319,6 @@ c0-20.855,2.907-41.609,8.636-61.662
         if (response.data.success) {
           this.bodyPartsData = response.data.data || [];
           console.log('处理后的身体部位数据:', this.bodyPartsData);
-          this.calculateSummaryStats();
           this.updateSVGColors();
         } else {
           console.error('API返回错误:', response.data.errorMsg);
@@ -339,36 +330,6 @@ c0-20.855,2.907-41.609,8.636-61.662
       } finally {
         this.loading = false;
       }
-    },
-    
-    // 计算汇总统计
-    calculateSummaryStats() {
-      console.log('计算汇总统计，数据:', this.bodyPartsData);
-      
-      // 计算总患者数（所有部位的患者数之和）
-      this.totalPatients = this.bodyPartsData.reduce((sum, part) => {
-        const count = parseInt(part.patient_count) || 0;
-        console.log(`部位 ${part.body_part}: ${count} 例患者`);
-        return sum + count;
-      }, 0);
-      
-      // 计算加权平均严重程度（按患者数加权）
-      let totalWeightedSeverity = 0;
-      let totalWeight = 0;
-      
-      this.bodyPartsData.forEach(part => {
-        const count = parseInt(part.patient_count) || 0;
-        const severity = parseFloat(part.average_severity) || 0;
-        
-        if (count > 0) {
-          totalWeightedSeverity += severity * count;
-          totalWeight += count;
-        }
-      });
-      
-      this.averageSeverity = totalWeight > 0 ? totalWeightedSeverity / totalWeight : 0;
-      
-      console.log(`汇总统计: 总患者数=${this.totalPatients}, 平均严重程度=${this.averageSeverity.toFixed(2)}`);
     },
     
     // 更新SVG颜色
@@ -513,45 +474,85 @@ c0-20.855,2.907-41.609,8.636-61.662
 </script>
 
 <style scoped>
-.population-body-heatmap-widget {
-  background: white;
-  border-radius: 8px;
+/* 标题样式 */
+.chart-title-overlay {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  z-index: 10;
+}
+
+.chart-title {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #333;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.chart-title i {
+  margin-right: 4px;
+  font-size: 14px;
+}
+
+.population-body-heatmap-widget {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
-.widget-header {
-  padding: 20px;
-  border-bottom: 1px solid #e4e7ed;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-}
-
-.widget-header h3 {
-  margin: 0;
-  color: #303133;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.heatmap-container {
-  display: flex;
-  gap: 20px;
-  padding: 20px;
-  min-height: 500px;
-}
-
-.human-figure-container {
+/* 整体内容滚动区域 */
+.content-scroll-area {
   flex: 1;
-  min-width: 300px;
-  border: 1px solid #e0e0e0;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+  min-height: 0;
+}
+
+.content-scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.content-scroll-area::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+}
+
+.content-scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(64, 158, 255, 0.3);
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+.content-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: rgba(64, 158, 255, 0.5);
+}
+
+/* 核心人体图区域 */
+.chart-container {
+  width: 100%;
+  height: 320px;
+  padding: 0;
+  flex-shrink: 0;
+  background: transparent;
   border-radius: 8px;
   overflow: hidden;
-  background-color: #f9f9f9;
+  position: relative;
 }
 
 .human-figure {
   width: 100%;
-  height: 400px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -560,85 +561,119 @@ c0-20.855,2.907-41.609,8.636-61.662
 .svg-placeholder {
   color: #909399;
   font-style: italic;
-}
-
-.heatmap-data {
-  width: 350px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.data-summary {
-  background: #f8f9fa;
-  padding: 15px;
-  border-radius: 6px;
-  border-left: 4px solid #409EFF;
-}
-
-.data-summary h4 {
-  margin: 0 0 10px 0;
-  color: #303133;
   font-size: 14px;
 }
 
-.summary-stats {
+/* 颜色等级图例覆盖层 - 位于左下角 */
+.color-legend-overlay {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 6px;
+  padding: 8px 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  z-index: 5;
+}
+
+.color-legend-overlay .legend-items {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+}
+
+.color-legend-overlay .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.color-legend-overlay .color-box {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.color-legend-overlay .level-label {
+  font-size: 9px;
+  color: #409EFF;
+  font-weight: 600;
+}
+
+/* 加载状态 */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  z-index: 10;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #409EFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 各部位热度数据区域 */
+.body-parts-area {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+  border-radius: 8px;
+  margin-top: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.body-parts-container {
+  padding: 8px 12px;
+}
+
+.body-parts-content {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.stat-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.stat-label {
-  color: #606266;
-  font-size: 13px;
-}
-
-.stat-value {
-  color: #409EFF;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.body-parts-data {
-  background: white;
-  border: 1px solid #e4e7ed;
-  border-radius: 6px;
-  padding: 15px;
-}
-
-.body-parts-data h4 {
-  margin: 0 0 15px 0;
-  color: #303133;
-  font-size: 14px;
-}
-
-.parts-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 .part-item {
-  padding: 10px;
+  background: rgba(255, 255, 255, 0.7);
   border-radius: 6px;
-  background-color: #f9f9f9;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
   cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
 }
 
 .part-item:hover {
-  background-color: #f0f0f0;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
 
 .part-item.highlighted {
-  background-color: #ecf5ff;
+  background: rgba(64, 158, 255, 0.1);
   border-color: #409EFF;
 }
 
@@ -646,38 +681,49 @@ c0-20.855,2.907-41.609,8.636-61.662
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .part-name {
-  font-weight: 500;
-  color: #303133;
-  font-size: 14px;
+  color: #409EFF;
+  font-weight: 600;
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
 .part-severity {
-  font-weight: 600;
-  font-size: 14px;
+  color: #409EFF;
+  font-weight: 700;
+  font-size: 11px;
+  background: rgba(64, 158, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 10px;
+  flex-shrink: 0;
 }
 
 .part-details {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
 }
 
 .patient-count {
-  color: #606266;
-  font-size: 12px;
+  color: #6c757d;
+  font-weight: 500;
+  font-size: 10px;
+  flex-shrink: 0;
 }
 
 .severity-bar {
-  width: 100px;
+  width: 80px;
   height: 4px;
-  background-color: #e4e7ed;
+  background-color: rgba(0, 0, 0, 0.1);
   border-radius: 2px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .severity-fill {
@@ -686,54 +732,32 @@ c0-20.855,2.907-41.609,8.636-61.662
   transition: width 0.3s ease;
 }
 
-.color-legend {
-  background: white;
-  border: 1px solid #e4e7ed;
-  border-radius: 6px;
-  padding: 15px;
-}
-
-.color-legend h4 {
-  margin: 0 0 10px 0;
-  color: #303133;
-  font-size: 14px;
-}
-
-.legend-items {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-}
-
-.color-box {
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
-  margin-right: 6px;
-}
-
-.level-label {
-  font-size: 12px;
-  color: #606266;
-}
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .heatmap-container {
-    flex-direction: column;
+  .chart-container {
+    height: 250px;
   }
   
-  .heatmap-data {
-    width: 100%;
+  .human-figure {
+    height: 250px !important;
+  }
+  
+  .body-parts-container {
+    padding: 6px 8px;
+  }
+  
+  .body-parts-content {
+    gap: 6px;
+  }
+  
+  .part-item {
+    padding: 6px 8px;
   }
   
   .legend-items {
     grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
   }
 }
 </style>

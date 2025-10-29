@@ -37,12 +37,13 @@
             range-separator="至"
             start-placeholder="开始日期"
             end-placeholder="结束日期"
-            size="small">
+            size="small"
+            @change="onFilterChange">
           </el-date-picker>
         </div>
         <div class="filter-item">
           <label>季节</label>
-          <el-select v-model="selectedSeason" placeholder="选择季节" size="small">
+          <el-select v-model="selectedSeason" placeholder="选择季节" size="small" @change="onFilterChange">
             <el-option label="全部" value="all"></el-option>
             <el-option label="春季(3-5月)" value="spring"></el-option>
             <el-option label="夏季(6-8月)" value="summer"></el-option>
@@ -52,7 +53,7 @@
         </div>
         <div class="filter-item">
           <label>时间段</label>
-          <el-select v-model="selectedTimePeriod" placeholder="选择时间段" size="small">
+          <el-select v-model="selectedTimePeriod" placeholder="选择时间段" size="small" @change="onFilterChange">
             <el-option label="全部" value="all"></el-option>
             <el-option label="夜间(00:00-07:59)" value="night"></el-option>
             <el-option label="早高峰(08:00-09:59)" value="morning_peak"></el-option>
@@ -64,7 +65,7 @@
         </div>
         <div class="filter-item">
           <label>年份</label>
-          <el-select v-model="selectedYear" placeholder="选择年份" size="small">
+          <el-select v-model="selectedYear" placeholder="选择年份" size="small" @change="onFilterChange">
             <el-option 
               v-for="year in yearOptions" 
               :key="year.value" 
@@ -127,79 +128,165 @@
           </div>
         </div>
 
-      <!-- 可视化图表区域 - 竖列布局，无容器框 -->
-      <div class="charts-container">
-        
-        <!-- 病例时间统计图 -->
-        <div class="chart-item">
+      <!-- 可视化图表区域 - 左侧三行图表，右侧一个人体图 -->
+      <div class="charts-grid">
+        <!-- 左侧图表区域 -->
+        <div class="left-charts-area">
+          <!-- 第一行：病例时间统计图（横条型） -->
+          <div class="chart-item chart-horizontal">
+            <div class="chart-title-overlay">
+              <div class="chart-title">
+                <i class="fas fa-chart-line"></i>
+                病例时间统计图
+              </div>
+              <div class="chart-subtitle">患者流量月度时间分布</div>
+            </div>
+            <div class="chart-content">
             <MonthlyTimeHeatmap 
               :selectedYear="selectedYear"
               :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
               :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
               :season="selectedSeason"
               :timePeriod="selectedTimePeriod" />
+            </div>
           </div>
           
-        <!-- ISS分布图 -->
-        <div class="chart-item">
-          <ISSDistributionChart 
-            :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
-            :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
-            :season="selectedSeason"
-            :timePeriod="selectedTimePeriod"
-            :year="selectedYear" />
+          <!-- 第二行：三个饼状图水平排列 -->
+          <div class="pie-charts-row">
+            <!-- ISS分布图 -->
+            <div class="chart-item chart-pie">
+              <div class="chart-title-overlay">
+                <div class="chart-title">
+                  <i class="fas fa-chart-pie"></i>
+                  ISS分布图
+                </div>
+              </div>
+              <div class="chart-content">
+                <ISSDistributionChart 
+                  :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
+                  :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
+                  :season="selectedSeason"
+                  :timePeriod="selectedTimePeriod"
+                  :year="selectedYear" />
+              </div>
+            </div>
+            
+            <!-- GCS分布图 -->
+            <div class="chart-item chart-pie">
+              <div class="chart-title-overlay">
+                <div class="chart-title">
+                  <i class="fas fa-chart-pie"></i>
+                  GCS分布图
+                </div>
+              </div>
+              <div class="chart-content">
+                <GCSDistributionChart 
+                  :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
+                  :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
+                  :season="selectedSeason"
+                  :timePeriod="selectedTimePeriod"
+                  :year="selectedYear" />
+              </div>
+            </div>
+            
+            <!-- RTS分布图 -->
+            <div class="chart-item chart-pie">
+              <div class="chart-title-overlay">
+                <div class="chart-title">
+                  <i class="fas fa-chart-pie"></i>
+                  RTS分布图
+                </div>
+              </div>
+              <div class="chart-content">
+                <RTSDistributionChart 
+                  :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
+                  :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
+                  :season="selectedSeason"
+                  :timePeriod="selectedTimePeriod"
+                  :year="selectedYear" />
+              </div>
+            </div>
           </div>
           
-        <!-- 伤因分布图 -->
-        <div class="chart-item">
+          <!-- 第三行：柱状图 + 旭日图 -->
+          <div class="bottom-charts-row">
+            <!-- 伤因分布图 -->
+            <div class="chart-item chart-bar">
+              <div class="chart-title-overlay">
+                <div class="chart-title">
+                  <i class="fas fa-chart-bar"></i>
+                  伤因分布图
+                </div>
+                <div class="chart-subtitle">受伤原因分类统计</div>
+              </div>
+              <div class="chart-content">
             <InjuryCauseChart 
               :selectedYear="selectedYear"
               :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
               :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
               :season="selectedSeason"
               :timePeriod="selectedTimePeriod" />
+              </div>
           </div>
           
-        <!-- GCS分布图 -->
-        <div class="chart-item">
-          <GCSDistributionChart 
-            :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
-            :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
-            :season="selectedSeason"
-            :timePeriod="selectedTimePeriod"
-            :year="selectedYear" />
+            <!-- 身体区域损伤图 -->
+            <div class="chart-item chart-sunburst">
+              <div class="chart-title-overlay">
+                <div class="chart-title">
+                  <i class="fas fa-sun"></i>
+                  身体区域损伤图
                 </div>
-
-        <!-- RTS分布图 -->
-        <div class="chart-item">
-          <RTSDistributionChart 
-            :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
-            :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
-            :season="selectedSeason"
-            :timePeriod="selectedTimePeriod"
-            :year="selectedYear" />
               </div>
+              <div class="chart-content">
+                <BodyRegionSunburst 
+                  :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
+                  :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
+                  :season="selectedSeason"
+                  :timePeriod="selectedTimePeriod"
+                  :year="selectedYear" />
+                </div>
+              </div>
+            </div>
+          </div>
 
-        <!-- 身体区域损伤图 -->
-        <div class="chart-item">
-          <BodyRegionSunburst 
-            :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
-            :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
-            :season="selectedSeason"
-            :timePeriod="selectedTimePeriod"
-            :year="selectedYear" />
+        <!-- 右侧区域：人群身体热力图 + 预测模块 -->
+        <div class="right-area">
+          <!-- 人群身体热力图 -->
+          <div class="chart-item chart-heatmap">
+            <div class="chart-title-overlay">
+              <div class="chart-title">
+                <i class="fas fa-fire"></i>
+                人群身体热力图
+              </div>
+            </div>
+            <div class="chart-content">
+              <PopulationBodyHeatmapWidget 
+                :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
+                :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
+                :season="selectedSeason"
+                :timePeriod="selectedTimePeriod"
+                :year="selectedYear" />
+            </div>
+          </div>
+          
+          <!-- 预测模块预留位置 -->
+          <div class="chart-item chart-prediction">
+            <div class="chart-title-overlay">
+              <div class="chart-title">
+                <i class="fas fa-crystal-ball"></i>
+                预测模块
+              </div>
+            </div>
+            <div class="chart-content">
+              <div class="prediction-placeholder">
+                <div class="placeholder-content">
+                  <i class="fas fa-cog fa-spin"></i>
+                  <p>预测模块开发中...</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <!-- 人群身体热力图 -->
-        <div class="chart-item">
-          <PopulationBodyHeatmapWidget 
-            :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
-            :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
-            :season="selectedSeason"
-            :timePeriod="selectedTimePeriod"
-            :year="selectedYear" />
-        </div>
-
       </div>
     </div>
 
@@ -309,6 +396,41 @@ export default {
   },
   
   methods: {
+    // 筛选条件变化时的处理
+    onFilterChange() {
+      console.log('=== Dashboard: 筛选条件发生变化，自动更新所有数据 ===');
+      console.log('Dashboard: 当前筛选条件:', {
+        selectedYear: this.selectedYear,
+        selectedSeason: this.selectedSeason,
+        selectedTimePeriod: this.selectedTimePeriod,
+        dateRange: this.dateRange
+      });
+      
+      // 自动更新统计数据（四个统计卡片）
+      console.log('=== Dashboard: 准备调用fetchStatistics ===');
+      try {
+        this.fetchStatistics();
+        console.log('=== Dashboard: fetchStatistics调用成功 ===');
+      } catch (error) {
+        console.error('=== Dashboard: fetchStatistics调用失败 ===');
+        console.error('Dashboard: fetchStatistics错误:', error);
+      }
+      
+      // 自动更新伤因分布数据
+      console.log('=== Dashboard: 准备调用fetchInjuryCauseData ===');
+      try {
+        this.fetchInjuryCauseData();
+        console.log('=== Dashboard: fetchInjuryCauseData调用成功 ===');
+      } catch (error) {
+        console.error('=== Dashboard: fetchInjuryCauseData调用失败 ===');
+        console.error('Dashboard: fetchInjuryCauseData错误:', error);
+      }
+      
+      // 其他图表组件会通过props变化自动重新获取数据
+      // ISS分布图、GCS分布图、RTS分布图、月度时间热力图、身体区域旭日图、人口身体热力图等都会通过watch监听props变化自动重新获取数据
+      console.log('Dashboard: 其他图表组件将通过props变化自动重新获取数据');
+    },
+    
     // 初始化所有数据
     initializeAllData() {
       console.log('Dashboard: 开始初始化所有数据')
@@ -322,6 +444,12 @@ export default {
     
     // 获取统计数据
     fetchStatistics() {
+      console.log('=== Dashboard: fetchStatistics方法被调用 ===');
+      console.log('Dashboard: fetchStatistics - 方法开始执行');
+      console.log('Dashboard: fetchStatistics - 调用堆栈:', new Error().stack);
+      console.log('Dashboard: fetchStatistics - this对象:', this);
+      console.log('Dashboard: fetchStatistics - $axios存在:', !!this.$axios);
+      
       // 构建查询参数
       let params = {};
       
@@ -331,24 +459,95 @@ export default {
         params.endDate = this.dateRange[1];
       }
       
-      this.$axios.get('/api/patient-statistics/statistics', { params })
+      // 添加四个维度的筛选条件
+      if (this.selectedYear) {
+        params.year = parseInt(this.selectedYear);
+      }
+      
+      if (this.selectedSeason && this.selectedSeason !== 'all') {
+        // 季节映射
+        const seasonMapping = {
+          'spring': 0,    // 春季
+          'summer': 1,    // 夏季
+          'autumn': 2,    // 秋季
+          'winter': 3     // 冬季
+        };
+        params.season = seasonMapping[this.selectedSeason];
+      }
+      
+      if (this.selectedTimePeriod && this.selectedTimePeriod !== 'all') {
+        // 时间段映射
+        const timePeriodMapping = {
+          'night': 0,         // 夜间
+          'morning_peak': 1,  // 早高峰
+          'noon_peak': 2,     // 午高峰
+          'afternoon': 3,     // 下午
+          'evening_peak': 4,  // 晚高峰
+          'evening': 5        // 晚上
+        };
+        params.timePeriod = timePeriodMapping[this.selectedTimePeriod];
+      }
+      
+      console.log('Dashboard: 获取统计数据，参数:', params);
+      console.log('Dashboard: 当前筛选条件:', {
+        selectedYear: this.selectedYear,
+        selectedSeason: this.selectedSeason,
+        selectedTimePeriod: this.selectedTimePeriod,
+        dateRange: this.dateRange
+      });
+      
+      console.log('=== Dashboard: 准备发送API请求到 /api/patient-statistics/statistics ===');
+      console.log('Dashboard: API请求参数:', params);
+      console.log('Dashboard: axios实例存在:', !!this.$axios);
+      console.log('Dashboard: axios baseURL:', this.$axios ? this.$axios.defaults.baseURL : 'undefined');
+      
+      // 强制检查axios是否可用
+      if (!this.$axios) {
+        console.error('=== Dashboard: $axios不存在，无法发送请求 ===');
+        this.$message.error('网络请求工具不可用');
+        return;
+      }
+      
+      console.log('=== Dashboard: 开始发送API请求 ===');
+      const requestPromise = this.$axios.get('/api/patient-statistics/statistics', { params });
+      console.log('=== Dashboard: API请求已发送，Promise对象:', requestPromise);
+      
+      requestPromise
         .then(res => {
+          console.log('=== Dashboard: 统计数据API响应成功 ===');
+          console.log('Dashboard: 统计数据API响应:', res.data);
           if (res.data.success && res.data.data) {
             const data = res.data.data;
             this.totalPatients = data.totalPatients || 0;
             this.dailyAverage = Math.round(data.averagePatientsPerDay * 10) / 10;
             this.avgInterventionTime = Math.round(data.averageInterventionTime * 10) / 10;
             this.successRate = Math.round(data.successRate * 10) / 10;
+            
+            console.log('Dashboard: 统计数据更新完成:', {
+              totalPatients: this.totalPatients,
+              dailyAverage: this.dailyAverage,
+              avgInterventionTime: this.avgInterventionTime,
+              successRate: this.successRate
+            });
+          } else {
+            console.warn('Dashboard: 未获取到有效统计数据');
           }
         })
         .catch(err => {
-          console.error('获取统计数据失败:', err);
+          console.error('=== Dashboard: 统计数据API请求失败 ===');
+          console.error('Dashboard: 错误详情:', err);
+          console.error('Dashboard: 错误消息:', err.message);
+          console.error('Dashboard: 错误响应:', err.response);
           this.$message.error('获取统计数据失败');
         });
     },
 
     // 处理查询按钮点击
     handleQuery() {
+      console.log('=== Dashboard: handleQuery方法被调用 ===');
+      console.log('Dashboard: handleQuery - 方法开始执行');
+      console.log('Dashboard: handleQuery - 调用堆栈:', new Error().stack);
+      
       this.queryLoading = true;
       
       console.log('Dashboard: 开始查询数据，参数:', {
@@ -359,19 +558,39 @@ export default {
       });
       
       // 获取统计数据（四个变量）
-      this.fetchStatistics();
+      console.log('=== Dashboard: 准备调用fetchStatistics ===');
+      console.log('Dashboard: fetchStatistics方法存在:', typeof this.fetchStatistics);
+      console.log('Dashboard: 即将调用fetchStatistics');
+      
+      try {
+        this.fetchStatistics();
+        console.log('=== Dashboard: fetchStatistics调用成功 ===');
+      } catch (error) {
+        console.error('=== Dashboard: fetchStatistics调用失败 ===');
+        console.error('Dashboard: fetchStatistics错误:', error);
+      }
       
       // 获取伤因分布数据
-      this.fetchInjuryCauseData();
+      console.log('=== Dashboard: 准备调用fetchInjuryCauseData ===');
+      console.log('Dashboard: fetchInjuryCauseData方法存在:', typeof this.fetchInjuryCauseData);
+      
+      try {
+        this.fetchInjuryCauseData();
+        console.log('=== Dashboard: fetchInjuryCauseData调用成功 ===');
+      } catch (error) {
+        console.error('=== Dashboard: fetchInjuryCauseData调用失败 ===');
+        console.error('Dashboard: fetchInjuryCauseData错误:', error);
+      }
       
       // 其他图表组件会通过props变化自动重新获取数据
       // ISS分布图、GCS分布图、RTS分布图等都会通过watch监听props变化自动重新获取数据
+      console.log('Dashboard: 其他图表组件将通过props变化自动重新获取数据');
       
       // 模拟查询过程
       setTimeout(() => {
         this.queryLoading = false;
         this.$message.success('数据查询完成！');
-        console.log('Dashboard: 查询完成');
+        console.log('=== Dashboard: 查询完成 ===');
       }, 1500);
     },
 
@@ -541,10 +760,12 @@ export default {
 <style scoped>
 .dashboard-container {
   height: 100vh;
+  width: 100vw;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   flex-direction: column;
   font-family: 'Microsoft YaHei', sans-serif;
+  overflow: hidden; /* 禁止整个页面滚动 */
 }
 
 /* 顶部导航栏 */
@@ -623,12 +844,14 @@ export default {
   100% { opacity: 1; }
 }
 
-/* 主要内容区域 - 全屏布局 */
+/* 主要内容区域 - 全屏布局，无滚动 */
 .dashboard-main {
   flex: 1;
   padding: 20px;
-  overflow-y: auto;
+  overflow: hidden; /* 禁止滚动 */
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  flex-direction: column;
 }
 
 /* 顶部筛选栏 */
@@ -704,24 +927,220 @@ export default {
   grid-template-columns: repeat(4, 1fr);
   gap: 15px;
   margin-bottom: 20px;
+  height: 80px; /* 固定高度 */
 }
 
-/* 图表容器 - 竖列布局 */
-.charts-container {
+/* 图表网格容器 - CSS Grid布局，无滚动 */
+.charts-grid {
+  flex: 1; /* 占据剩余空间 */
+  display: grid;
+  grid-template-columns: 3fr 1fr; /* 2列：左侧图表区域占3份，右侧人体图占1份 */
+  gap: 15px;
+  overflow: hidden; /* 禁止滚动 */
+}
+
+/* 左侧图表区域 */
+.left-charts-area {
+  display: grid;
+  grid-template-rows: 1fr 1fr 1fr; /* 三行等分 */
+  gap: 15px;
+}
+
+/* 右侧区域：人群身体热力图 + 预测模块 */
+.right-area {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 0;
+  gap: 15px;
 }
 
-/* 图表项目 - 无容器框 */
+/* 预测模块样式 */
+.chart-prediction {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+}
+
+.prediction-placeholder {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.placeholder-content {
+  text-align: center;
+  color: #909399;
+}
+
+.placeholder-content i {
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: #409EFF;
+}
+
+.placeholder-content p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 第二行：三个饼状图水平排列 */
+.pie-charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr; /* 三列等分 */
+  gap: 15px;
+}
+
+/* 第三行：柱状图 + 旭日图 */
+.bottom-charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 两列等分 */
+  gap: 15px;
+}
+
+/* 图表项目基础样式 */
 .chart-item {
-  width: 100%;
-  min-height: 500px;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  border-radius: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative; /* 为标题覆盖定位 */
+}
+
+/* 图表标题覆盖样式 - 显示在右上角 */
+.chart-title-overlay {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: rgba(52, 152, 219, 0.9);
+  backdrop-filter: blur(10px);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.chart-title {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.chart-title i {
+  margin-right: 6px;
+  font-size: 14px;
+}
+
+.chart-subtitle {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.2;
+}
+
+/* 图表样式类 - 保留用于样式标识 */
+.chart-horizontal,
+.chart-pie,
+.chart-bar,
+.chart-sunburst,
+.chart-vertical {
+  /* 样式类保留，用于组件标识 */
+  position: relative;
+}
+
+/* 图表组件尺寸调整 - 适配网格布局 */
+.chart-item >>> .monthly-time-heatmap,
+.chart-item >>> .injury-cause-chart,
+.chart-item >>> .iss-distribution-chart,
+.chart-item >>> .gcs-distribution-chart,
+.chart-item >>> .rts-distribution-chart,
+.chart-item >>> .body-region-sunburst,
+.chart-item >>> .population-body-heatmap {
+  height: 100% !important;
+  min-height: unset !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* 图表内容区域调整 */
+.chart-item >>> .chart-content {
+  flex: 1 !important;
+  min-height: unset !important;
+  padding: 0 !important; /* 移除内边距，让图表占据整个区域 */
+  background: transparent !important; /* 透明背景，让图表组件自己处理背景 */
+}
+
+/* 图表画布调整 */
+.chart-item >>> .chart-canvas,
+.chart-item >>> .donut-chart,
+.chart-item >>> .heatmap-container,
+.chart-item >>> .sunburst-container,
+.chart-item >>> .population-heatmap-container {
+  height: 100% !important;
+  min-height: unset !important;
+  flex: 1 !important;
+}
+
+/* 图表标题区域调整 */
+.chart-item >>> .chart-header {
+  flex-shrink: 0 !important;
+  padding: 10px 15px !important;
+}
+
+.chart-item >>> .chart-title {
+  font-size: 14px !important;
+  margin-bottom: 5px !important;
+}
+
+.chart-item >>> .chart-subtitle {
+  font-size: 12px !important;
+  margin-bottom: 10px !important;
+}
+
+/* 加载和错误状态调整 */
+.chart-item >>> .loading-container,
+.chart-item >>> .error-container,
+.chart-item >>> .empty-data {
+  height: 100% !important;
+  min-height: unset !important;
+  flex: 1 !important;
+}
+
+/* 图例区域调整 */
+.chart-item >>> .chart-legend {
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+/* 响应式字体调整 */
+@media (min-width: 1920px) {
+  .chart-item >>> .chart-title {
+    font-size: 16px !important;
+  }
+  
+  .chart-item >>> .chart-subtitle {
+    font-size: 13px !important;
+  }
+}
+
+@media (min-width: 2560px) {
+  .chart-item >>> .chart-title {
+    font-size: 18px !important;
+  }
+  
+  .chart-item >>> .chart-subtitle {
+    font-size: 14px !important;
+  }
 }
 
 .stat-card {
@@ -843,21 +1262,99 @@ export default {
   color: #666;
 }
 
-/* 响应式设计 */
-@media (max-width: 1200px) {
-  .stats-cards {
-    grid-template-columns: repeat(2, 1fr);
+/* 响应式设计 - 大屏适配 */
+@media (min-width: 1920px) {
+  .dashboard-header {
+    height: 70px;
   }
   
-  .filter-container {
-    flex-wrap: wrap;
-    gap: 15px;
+  .filter-bar {
+    height: 60px;
+  }
+  
+  .stats-cards {
+    height: 100px;
+  }
+  
+  .charts-grid {
+    gap: 20px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .dashboard-header {
+    height: 80px;
+  }
+  
+  .filter-bar {
+    height: 70px;
+  }
+  
+  .stats-cards {
+    height: 120px;
+  }
+  
+  .charts-grid {
+    gap: 25px;
+  }
+}
+
+@media (min-width: 3840px) {
+  .charts-grid {
+    grid-template-columns: 3fr 1fr; /* 4K屏幕保持2列布局 */
+    gap: 25px;
+  }
+}
+
+@media (max-width: 1366px) {
+  .charts-grid {
+    grid-template-columns: 1fr; /* 小屏幕改为1列 */
+    grid-template-rows: auto; /* 自动高度 */
+  }
+  
+  .left-charts-area {
+    grid-template-rows: auto auto auto; /* 三行自动高度 */
+  }
+  
+  .pie-charts-row {
+    grid-template-columns: 1fr; /* 饼图改为1列 */
+    grid-template-rows: 1fr 1fr 1fr; /* 三行 */
+  }
+  
+  .bottom-charts-row {
+    grid-template-columns: 1fr; /* 底部图表改为1列 */
+    grid-template-rows: 1fr 1fr; /* 两行 */
+  }
+  
+  .stats-cards {
+    grid-template-columns: repeat(2, 1fr);
+    height: 120px;
   }
 }
 
 @media (max-width: 768px) {
+  .charts-grid {
+    grid-template-columns: 1fr; /* 手机屏幕改为1列 */
+    grid-template-rows: auto; /* 自动高度 */
+  }
+  
+  .left-charts-area {
+    grid-template-rows: auto auto auto; /* 三行自动高度 */
+  }
+  
+  .pie-charts-row {
+    grid-template-columns: 1fr; /* 饼图改为1列 */
+    grid-template-rows: 1fr 1fr 1fr; /* 三行 */
+  }
+  
+  .bottom-charts-row {
+    grid-template-columns: 1fr; /* 底部图表改为1列 */
+    grid-template-rows: 1fr 1fr; /* 两行 */
+  }
+  
   .stats-cards {
     grid-template-columns: 1fr;
+    height: 200px;
   }
   
   .filter-container {
@@ -867,14 +1364,6 @@ export default {
   
   .filter-item {
     width: 100%;
-  }
-  
-  .placeholder-content {
-    padding: 20px;
-  }
-  
-  .placeholder-content i {
-    font-size: 36px;
   }
 }
 </style>
