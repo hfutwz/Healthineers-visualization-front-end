@@ -69,27 +69,24 @@
     <!-- 地图显示区域 -->
     <div id="hotMap" class="map-box"></div>
 
-    <!-- 受伤人体弹窗组件 -->
-    <InjuryFigureModal 
+    <!-- 患者列表弹窗组件 -->
+    <PatientListModal 
       v-if="showModal" 
-      :patient="currentPatient"
-      :patients="patientsData"
-      :current-index="currentPatientIndex"
+      :visible="showModal"
+      :patient-ids="patientIds"
       @close="closeModal"
-      @prev="showPreviousPatient"
-      @next="showNextPatient"
     />
   </div>
 </template>
 
 <script>
 /* global AMap */
-import InjuryFigureModal from './InjuryFigureModal.vue';
+import PatientListModal from './PatientListModal.vue';
 // 依赖 Element Plus 的全局注册（项目已在入口统一引入）。
 
 export default {
   components: {
-    InjuryFigureModal
+    PatientListModal
   },
   data() {
     return {
@@ -101,8 +98,7 @@ export default {
       selectedSeasons: [],
       selectedTimePeriods: [],
       showModal: false,
-      patientsData: [],
-      currentPatientIndex: 0,
+      patientIds: [],
       clickedPoint: null,
       
       // 颜色定义
@@ -123,10 +119,6 @@ export default {
     }
   },
   computed: {
-    // 当前患者
-    currentPatient() {
-      return this.patientsData[this.currentPatientIndex] || {};
-    }
   },
   methods: {
     initMap() {
@@ -169,7 +161,7 @@ export default {
       this.fetchPatientData();
     },
     
-    // 请求患者数据
+    // 请求患者ID列表（只获取ID，减少数据传输）
     fetchPatientData() {
       if (!this.clickedPoint) return;
       
@@ -186,21 +178,20 @@ export default {
       });
       
       this.$axios
-        .get('/api/iss/injury/search', { params })
+        .get('/api/iss/injury/search/ids', { params })
         .then(res => {
-          console.log('患者数据响应：', res.data);
-          this.patientsData = res.data.data || [];
+          console.log('患者ID列表响应：', res.data);
+          this.patientIds = res.data.data || [];
           
-          if (this.patientsData.length > 0) {
-            this.currentPatientIndex = 0;
+          if (this.patientIds.length > 0) {
             this.showModal = true;
           } else {
-            alert('该位置没有找到患者数据');
+            this.$message.info('该位置没有找到患者数据');
           }
         })
         .catch(err => {
-          console.error('请求患者数据失败：', err);
-          alert('获取患者数据失败');
+          console.error('请求患者ID列表失败：', err);
+          this.$message.error('获取患者数据失败');
         });
     },
     
@@ -261,24 +252,7 @@ export default {
     // 弹窗相关方法
     closeModal() {
       this.showModal = false;
-    },
-    
-    showPreviousPatient() {
-      if (this.currentPatientIndex > 0) {
-        this.currentPatientIndex--;
-      } else {
-        // 循环到最后一个
-        this.currentPatientIndex = this.patientsData.length - 1;
-      }
-    },
-    
-    showNextPatient() {
-      if (this.currentPatientIndex < this.patientsData.length - 1) {
-        this.currentPatientIndex++;
-      } else {
-        // 循环到第一个
-        this.currentPatientIndex = 0;
-      }
+      this.patientIds = [];
     }
   },
   mounted() {

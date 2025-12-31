@@ -111,12 +111,16 @@ export default {
       type: String,
       default: null
     },
-    season: {
+    timePeriod: {
       type: [String, Number],
       default: null
     },
-    timePeriod: {
-      type: [String, Number],
+    customStartTime: {
+      type: String,
+      default: null
+    },
+    customEndTime: {
+      type: String,
       default: null
     }
   },
@@ -160,13 +164,19 @@ export default {
       },
       immediate: false
     },
-    season: {
+    timePeriod: {
       handler() {
         this.loadData();
       },
       immediate: false
     },
-    timePeriod: {
+    customStartTime: {
+      handler() {
+        this.loadData();
+      },
+      immediate: false
+    },
+    customEndTime: {
       handler() {
         this.loadData();
       },
@@ -185,9 +195,15 @@ export default {
         this.isLoading = true;
         
         // 构建查询参数
-        const params = {
-          year: this.selectedYear
-        };
+        const params = {};
+        
+        // 添加年份参数（只在有有效值时才添加）
+        if (this.selectedYear && this.selectedYear !== 'all' && this.selectedYear !== '' && this.selectedYear != null) {
+          const yearInt = parseInt(this.selectedYear);
+          if (!isNaN(yearInt)) {
+            params.year = yearInt;
+          }
+        }
         
         // 添加日期范围参数
         if (this.startDate) {
@@ -195,17 +211,6 @@ export default {
         }
         if (this.endDate) {
           params.endDate = this.endDate;
-        }
-        
-        // 添加季节参数（转换为数字）
-        if (this.season && this.season !== 'all') {
-          const seasonMapping = {
-            'spring': 0,  // 春季
-            'summer': 1,  // 夏季
-            'autumn': 2,  // 秋季
-            'winter': 3   // 冬季
-          };
-          params.season = seasonMapping[this.season];
         }
         
         // 添加时间段参数（转换为数字）
@@ -219,6 +224,12 @@ export default {
             'evening': 5          // 晚上
           };
           params.timePeriod = timePeriodMapping[this.timePeriod];
+        }
+        
+        // 添加自定义时间段参数
+        if (this.customStartTime && this.customEndTime) {
+          params.customStartTime = this.customStartTime;
+          params.customEndTime = this.customEndTime;
         }
         
         console.log('月度热力图查询参数:', params);

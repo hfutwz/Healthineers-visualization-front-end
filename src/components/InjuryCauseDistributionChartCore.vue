@@ -26,7 +26,11 @@
         
         <div class="stats-container">
           <div class="stats-content">
-            <div v-for="(item, index) in legendData" :key="index" class="stat-item">
+            <div 
+              v-for="(item, index) in legendData" 
+              :key="index" 
+              class="stat-item clickable"
+              @click="handleInjuryCauseClick(item)">
               <span class="stat-color" :style="{ backgroundColor: item.color }"></span>
               <span class="stat-label">{{ item.name }}</span>
               <span class="stat-value">{{ item.total }}例</span>
@@ -47,6 +51,7 @@
       <i class="el-icon-warning"></i>
       <span>暂无数据</span>
     </div>
+    
   </div>
 </template>
 
@@ -55,10 +60,12 @@ import * as echarts from 'echarts'
 
 export default {
   name: 'InjuryCauseDistributionChartCore',
+  components: {
+  },
   props: {
     selectedYear: {
       type: String,
-      default: () => new Date().getFullYear().toString()
+      default: 'all'
     },
     startDate: {
       type: Date,
@@ -68,13 +75,17 @@ export default {
       type: Date,
       default: null
     },
-    season: {
-      type: String,
-      default: 'all'
-    },
     timePeriod: {
       type: String,
       default: 'all'
+    },
+    customStartTime: {
+      type: String,
+      default: null
+    },
+    customEndTime: {
+      type: String,
+      default: null
     }
   },
   data() {
@@ -84,7 +95,15 @@ export default {
       legendData: [],
       hasData: false,
       isLoading: true,
-      months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+      months: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+      // 伤因名称到数字的映射
+      injuryCauseMapping: {
+        '交通伤': 0,
+        '高坠伤': 1,
+        '机械伤': 2,
+        '跌倒': 3,
+        '其他': 4
+      }
     }
   },
   watch: {
@@ -104,12 +123,17 @@ export default {
         this.fetchData()
       }
     },
-    season: {
+    timePeriod: {
       handler() {
         this.fetchData()
       }
     },
-    timePeriod: {
+    customStartTime: {
+      handler() {
+        this.fetchData()
+      }
+    },
+    customEndTime: {
       handler() {
         this.fetchData()
       }
@@ -139,8 +163,12 @@ export default {
         // 构建查询参数
         const params = {}
         
-        if (this.selectedYear && this.selectedYear !== 'all') {
-          params.year = this.selectedYear
+        // 添加年份参数（只在有有效值时才添加）
+        if (this.selectedYear && this.selectedYear !== 'all' && this.selectedYear !== '' && this.selectedYear != null) {
+          const yearInt = parseInt(this.selectedYear);
+          if (!isNaN(yearInt)) {
+            params.year = yearInt;
+          }
         }
         
         if (this.startDate) {
@@ -149,17 +177,6 @@ export default {
         
         if (this.endDate) {
           params.endDate = this.endDate
-        }
-        
-        // 添加季节参数（转换为数字）
-        if (this.season && this.season !== 'all') {
-          const seasonMapping = {
-            'spring': 0,  // 春季
-            'summer': 1,  // 夏季
-            'autumn': 2,  // 秋季
-            'winter': 3   // 冬季
-          }
-          params.season = seasonMapping[this.season]
         }
         
         // 添加时间段参数（转换为数字）
@@ -173,6 +190,12 @@ export default {
             'evening': 5          // 晚上
           }
           params.timePeriod = timePeriodMapping[this.timePeriod]
+        }
+        
+        // 添加自定义时间段参数
+        if (this.customStartTime && this.customEndTime) {
+          params.customStartTime = this.customStartTime
+          params.customEndTime = this.customEndTime
         }
         
         console.log('InjuryCauseDistributionChartCore: 查询参数:', params)
@@ -380,6 +403,99 @@ export default {
       }
     },
     
+    // 处理伤因类型点击事件
+    async handleInjuryCauseClick(item) {
+      if (item.total === 0) {
+        this.$message.info(`当前筛选条件下没有${item.name}患者`);
+        return;
+      }
+      
+      // 显示加载提示
+      const loading = this.$loading({
+        lock: true,
+        text: `正在加载${item.name}患者列表...`,
+        spinner: 'el-icon-loading',
+        background: 'rgba(0, 0, 0, 0.7)'
+      });
+      
+      try {
+        // 获取伤因类型对应的数字
+        const injuryCauseCategory = this.injuryCauseMapping[item.name];
+        if (injuryCauseCategory === undefined) {
+          this.$message.error('未知的伤因类型');
+          return;
+        }
+        
+        // 构建查询参数
+        const params = {
+          injuryCauseCategory: injuryCauseCategory
+        };
+        
+        // 添加日期范围参数（转换为字符串格式 YYYY-MM-DD）
+        if (this.startDate) {
+          // 如果是 Date 对象，转换为字符串
+          if (this.startDate instanceof Date) {
+            const year = this.startDate.getFullYear();
+            const month = String(this.startDate.getMonth() + 1).padStart(2, '0');
+            const day = String(this.startDate.getDate()).padStart(2, '0');
+            params.startDate = `${year}-${month}-${day}`;
+          } else {
+            params.startDate = this.startDate;
+          }
+        }
+        
+        if (this.endDate) {
+          // 如果是 Date 对象，转换为字符串
+          if (this.endDate instanceof Date) {
+            const year = this.endDate.getFullYear();
+            const month = String(this.endDate.getMonth() + 1).padStart(2, '0');
+            const day = String(this.endDate.getDate()).padStart(2, '0');
+            params.endDate = `${year}-${month}-${day}`;
+          } else {
+            params.endDate = this.endDate;
+          }
+        }
+        
+        // 添加年份参数
+        if (this.selectedYear && this.selectedYear !== 'all' && this.selectedYear !== '' && this.selectedYear != null) {
+          const yearInt = parseInt(this.selectedYear);
+          if (!isNaN(yearInt)) {
+            params.year = yearInt;
+          }
+        }
+        
+        // 添加时间段参数
+        if (this.timePeriod && this.timePeriod !== 'all') {
+          params.timePeriod = this.timePeriod;
+        }
+        
+        // 添加自定义时间范围参数
+        if (this.customStartTime && this.customEndTime) {
+          params.customStartTime = this.customStartTime;
+          params.customEndTime = this.customEndTime;
+        }
+        
+        // 调用后端接口获取患者ID列表
+        const res = await this.$axios.get('/api/patient-statistics/injury-cause-patient-ids', { params });
+        
+        if (res.data.success && res.data.data) {
+          // 通过事件通知父组件显示患者列表
+          this.$emit('show-patient-list', {
+            patientIds: res.data.data,
+            title: `${item.name}患者列表`
+          });
+        } else {
+          this.$message.error(`获取${item.name}患者列表失败`);
+        }
+      } catch (err) {
+        console.error('获取患者列表失败:', err);
+        this.$message.error(`获取${item.name}患者列表失败: ` + (err.response?.data?.errorMsg || err.message));
+      } finally {
+        loading.close();
+      }
+    },
+    
+    
   }
 }
 </script>
@@ -518,6 +634,16 @@ export default {
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transform: translateY(-1px);
+}
+
+.stat-item.clickable {
+  cursor: pointer;
+}
+
+.stat-item.clickable:hover {
+  background: rgba(52, 152, 219, 0.1);
+  border-color: rgba(52, 152, 219, 0.3);
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
 }
 
 .stat-color {

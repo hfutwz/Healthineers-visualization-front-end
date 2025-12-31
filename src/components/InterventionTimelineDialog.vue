@@ -118,19 +118,11 @@
     >
       <div class="statistics-content">
         <div class="statistics-header" style="background: #f5f7fa; border: 1px solid #e4e7ed; padding: 15px; margin: -20px -20px 15px -20px; border-radius: 4px;">
-          <h3 class="statistics-title" style="font-size: 18px; font-weight: 500; margin: 0 0 10px 0; color: #303133;">{{ statisticsData.eventType }} - 统计分布</h3>
+          <h3 class="statistics-title" style="font-size: 18px; font-weight: 500; margin: 0 0 10px 0; color: #303133;">{{ statisticsData.eventName || statisticsData.eventType || selectedEventName }} - 统计分布</h3>
           <div class="statistics-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
-            <div class="statistics-item" style="background: #fff; padding: 8px 12px; border: 1px solid #e4e7ed; border-radius: 4px;">
-              <div class="statistics-item-label" style="font-size: 12px; color: #909399; margin-bottom: 2px;">事件类型</div>
-              <div class="statistics-item-value" style="font-size: 14px; font-weight: 500; color: #303133;">{{ statisticsData.eventType }}</div>
-            </div>
             <div class="statistics-item" style="background: #fff; padding: 8px 12px; border: 1px solid #e4e7ed; border-radius: 4px;">
               <div class="statistics-item-label" style="font-size: 12px; color: #909399; margin-bottom: 2px;">平均时间</div>
               <div class="statistics-item-value" style="font-size: 14px; font-weight: 500; color: #303133;">{{ statisticsData.meanTime?.toFixed(1) }} 分钟</div>
-            </div>
-            <div class="statistics-item" style="background: #fff; padding: 8px 12px; border: 1px solid #e4e7ed; border-radius: 4px;">
-              <div class="statistics-item-label" style="font-size: 12px; color: #909399; margin-bottom: 2px;">中位时间</div>
-              <div class="statistics-item-value" style="font-size: 14px; font-weight: 500; color: #303133;">{{ statisticsData.medianTime?.toFixed(1) }} 分钟</div>
             </div>
             <div class="statistics-item" style="background: #fff; padding: 8px 12px; border: 1px solid #e4e7ed; border-radius: 4px;">
               <div class="statistics-item-label" style="font-size: 12px; color: #909399; margin-bottom: 2px;">标准差</div>
@@ -149,8 +141,12 @@
             <div class="statistics-item" style="background: #fff; padding: 8px 12px; border: 1px solid #e4e7ed; border-radius: 4px;">
               <div class="statistics-item-label" style="font-size: 12px; color: #909399; margin-bottom: 2px;">质控标准线</div>
               <div class="statistics-item-value" style="font-size: 14px; font-weight: 500; color: #303133;">{{ statisticsData.qualityControlLine?.toFixed(1) }} 分钟</div>
-        </div>
-        </div>
+            </div>
+            <div v-if="statisticsData.validDataCount != null" class="statistics-item" style="background: #fff; padding: 8px 12px; border: 1px solid #e4e7ed; border-radius: 4px;">
+              <div class="statistics-item-label" style="font-size: 12px; color: #909399; margin-bottom: 2px;">有效数据</div>
+              <div class="statistics-item-value" style="font-size: 14px; font-weight: 500; color: #303133;">{{ statisticsData.validDataCount }} 条</div>
+            </div>
+          </div>
         </div>
         
         <div class="chart-container">
@@ -327,21 +323,59 @@ export default {
         this.selectedEventName = event.eventName
         this.statisticsDialogVisible = true
         
-        // 获取统计数据，传入当前患者ID
-        const response = await this.$axios.get(`/api/intervention/statistics/${this.getEventTypeKey(event.eventName)}`, {
+        // 使用与 KeyEventsDistributionPage.vue 完全相同的接口
+        const response = await this.$axios.get('/api/intervention/all-key-events-statistics', {
           params: {
             patientId: this.patientId
           }
         })
-        this.statisticsData = response.data.data || {}
         
-        // 等待对话框完全打开后再初始化图表
-        this.$nextTick(() => {
-          // 使用setTimeout确保对话框动画完成
-          setTimeout(() => {
-            this.initChart()
-          }, 300)
-        })
+        if (response.data.success) {
+          const data = response.data.data
+          const eventStatistics = data.eventStatistics || []
+          const errorData = data.errorData || []
+          const errorCount = data.errorCount || 0
+          
+          // 从所有事件统计中筛选出当前事件的数据
+          const currentEventStat = eventStatistics.find(stat => stat.eventName === event.eventName)
+          
+          if (!currentEventStat) {
+            this.$message.error('未找到该事件的统计数据')
+            this.statisticsDialogVisible = false
+            return
+          }
+          
+          // 将 KeyEventStatisticsDTO 转换为与之前兼容的格式
+          this.statisticsData = {
+            eventType: currentEventStat.eventType,
+            eventName: currentEventStat.eventName,
+            meanTime: currentEventStat.meanTime,
+            medianTime: currentEventStat.medianTime,
+            standardDeviation: currentEventStat.standardDeviation,
+            qualityControlLine: currentEventStat.qualityControlLine,
+            currentPatientTime: currentEventStat.currentPatientTime,
+            validDataCount: currentEventStat.validDataCount
+          }
+          
+          // 更新全局错误数据（如果存在）
+          if (this.$root.updateErrorData) {
+            this.$root.updateErrorData(errorData, errorCount)
+          }
+          
+          // 等待对话框完全打开后再初始化图表
+          this.$nextTick(() => {
+            // 使用setTimeout确保对话框动画完成
+            setTimeout(() => {
+              this.initChart()
+            }, 300)
+          })
+          
+          if (errorCount > 0) {
+            this.$message.warning(`发现 ${errorCount} 条错误数据，已记录到文件并可在导航栏通知中查看`)
+          }
+        } else {
+          this.$message.error(response.data.errorMsg || '获取统计数据失败')
+        }
       } catch (error) {
         console.error('获取统计数据失败:', error)
         this.$message.error('获取统计数据失败: ' + error.message)
@@ -402,7 +436,6 @@ export default {
       const container = this.$refs.chartContainer
       if (container.offsetWidth === 0 || container.offsetHeight === 0) {
         console.warn('图表容器尺寸为0，延迟初始化')
-        // 如果容器没有尺寸，延迟初始化
         setTimeout(() => {
           this.initChart()
         }, 200)
@@ -417,10 +450,74 @@ export default {
         return
       }
       
+      // 使用与 KeyEventsDistributionPage.vue 完全相同的 updateChart 逻辑
+      this.updateChart(this.chart, this.statisticsData)
+      
+      // 监听窗口大小变化
+      window.addEventListener('resize', this.handleResize)
+    },
+    
+    /**
+     * 更新图表 - 完全参考 KeyEventsDistributionPage.vue 的实现
+     */
+    updateChart(chart, eventStat) {
+      const mean = eventStat.meanTime || 0
+      const std = eventStat.standardDeviation || 0
+      const qualityControlLine = eventStat.qualityControlLine || 0
+      const currentPatientTime = eventStat.currentPatientTime
+      
+      if (std <= 0 || mean === 0) {
+        chart.setOption({
+          title: {
+            text: '暂无有效数据',
+            left: 'center',
+            top: 'middle',
+            textStyle: {
+              color: '#909399',
+              fontSize: 16
+            }
+          }
+        })
+        return
+      }
+      
+      // 在前端生成完整的正态分布曲线（从μ-2σ到μ+2σ，包含负半轴）
+      const curveData = this.generateNormalDistributionCurve(mean, std, 500)
+      
+      // 计算关键点
+      const keyPoints = {
+        minus2D: mean - 2 * std,
+        minusD: mean - std,
+        mean: mean,
+        plusD: mean + std,
+        plus2D: mean + 2 * std,
+        zero: 0
+      }
+      
+      // X轴范围：从μ-2σ到μ+2σ（包含负半轴）
+      // 如果当前患者时间超出范围，扩展X轴范围以包含它
+      let xAxisMin = mean - 2 * std
+      let xAxisMax = mean + 2 * std
+      if (currentPatientTime != null) {
+        if (currentPatientTime < xAxisMin) {
+          xAxisMin = currentPatientTime - std // 扩展范围，留出一些空间
+        }
+        if (currentPatientTime > xAxisMax) {
+          xAxisMax = currentPatientTime + std // 扩展范围，留出一些空间
+        }
+      }
+      
+      // 计算Y轴最大值
+      const maxY = Math.max(...curveData.map(p => p[1]))
+      
+      // 为图例显示创建虚拟数据点（位于图表范围外，不可见但能让图例正确显示样式）
+      const legendDummyPoint = [xAxisMin - (xAxisMax - xAxisMin) * 0.1, 0]
+      
       const option = {
         title: {
-          text: `${this.selectedEventName} - 时间分布统计`,
+          text: `${eventStat.eventName || this.selectedEventName} - 正态分布图`,
           left: 'center',
+          top: 10,
           textStyle: {
             fontSize: 16,
             fontWeight: 'bold'
@@ -428,49 +525,83 @@ export default {
         },
         tooltip: {
           trigger: 'axis',
-          formatter: function(params) {
-            if (!params || !params[0]) return ''
-            return `时间: ${params[0].axisValue} 分钟<br/>频次: ${params[0].value}`
+          axisPointer: {
+            type: 'cross'
+          },
+          formatter: (params) => {
+            let result = `时间: ${params[0].value[0].toFixed(2)} 分钟<br/>`
+            if (params[0].seriesName === '正态分布曲线') {
+              result += `概率密度: ${params[0].value[1].toFixed(4)}<br/>`
+            }
+            result += `均值(μ): ${mean.toFixed(2)} 分钟<br/>`
+            result += `标准差(σ): ${std.toFixed(2)} 分钟<br/>`
+            result += `质控标准线: ${qualityControlLine.toFixed(2)} 分钟`
+            if (currentPatientTime != null) {
+              result += `<br/>当前患者时间: ${currentPatientTime.toFixed(2)} 分钟`
+            }
+            return result
           }
         },
+        legend: {
+          data: currentPatientTime != null 
+            ? ['正态分布曲线', '均值线', '质控标准线', '当前患者时间']
+            : ['正态分布曲线', '均值线', '质控标准线'],
+          top: 35
+        },
         grid: {
-          left: '3%',
+          left: '8%',
           right: '4%',
-          bottom: '3%',
-          containLabel: true
+          bottom: '12%',  // 底部空间用于显示关键点标注
+          top: '15%',
+          containLabel: true,
+          show: false,  // 不显示网格背景
+          borderWidth: 0  // 不显示边框
         },
         xAxis: {
           type: 'value',
-          name: '时间 (分钟)',
+          name: '时间（分钟）',
           nameLocation: 'middle',
-          nameGap: 30,
-          axisLine: {
-            lineStyle: {
-              color: '#666'
-            }
+          nameGap: 50,  // 增加间距，避免与底部标注重合
+          min: xAxisMin,
+          max: xAxisMax,
+          splitNumber: 20,
+          axisLabel: {
+            show: false  // X轴不显示数值标签，所有标注通过graphic组件在底部显示
+          },
+          axisTick: {
+            show: true  // 显示刻度线
+          },
+          splitLine: {
+            show: false  // 不显示网格线
           }
         },
         yAxis: {
           type: 'value',
-          name: '频次',
+          name: '概率密度',
           nameLocation: 'middle',
           nameGap: 50,
-          axisLine: {
-            lineStyle: {
-              color: '#666'
+          min: 0,
+          max: maxY * 1.1,  // 稍微扩展Y轴范围以便更好地显示
+          axisLabel: {
+            formatter: (value) => {
+              // 所有Y轴标签都保留三位小数
+              return value.toFixed(3)
             }
+          },
+          splitLine: {
+            show: false  // 不显示网格线
           }
         },
         series: [
           {
-            name: '分布',
+            name: '正态分布曲线',
             type: 'line',
-            data: this.generateChartData(),
+            data: curveData,
             smooth: true,
-            symbol: 'none', // 不显示数据点
+            symbol: 'none',
             lineStyle: {
               color: '#409EFF',
-              width: 3
+              width: 2
             },
             areaStyle: {
               color: {
@@ -484,81 +615,209 @@ export default {
                   { offset: 1, color: 'rgba(64, 158, 255, 0.05)' }
                 ]
               }
+            }
+          },
+          {
+            name: '均值线',
+            type: 'line',
+            data: [legendDummyPoint],  // 虚拟数据点，用于图例显示，位于图表范围外
+            lineStyle: {
+              color: '#409EFF',
+              type: 'dashed',
+              width: 2
             },
+            itemStyle: {
+              color: '#409EFF'
+            },
+            symbol: 'none',  // 不显示数据点标记
             markLine: {
               data: [
                 {
-                  name: '均值线',
-                  xAxis: this.statisticsData.meanTime || 0,
+                  name: '均值',
+                  xAxis: mean,
                   lineStyle: {
-                    color: '#67C23A',
-                    type: 'solid',
-                    width: 2
-                  },
-                  label: {
-                    formatter: '均值: {c} 分钟',
-                    position: 'end'
-                  }
-                },
-                // 只有当质控标准线大于0时才显示
-                ...(this.statisticsData.qualityControlLine > 0 ? [{
-                  name: '质控标准线',
-                  xAxis: this.statisticsData.qualityControlLine,
-                  lineStyle: {
-                    color: '#E6A23C',
+                    color: '#409EFF',
                     type: 'dashed',
                     width: 2
                   },
                   label: {
-                    formatter: '质控标准: {c} 分钟',
-                    position: 'end'
+                    show: true,
+                    formatter: 'mean(t)',
+                    position: 'inside',  // 显示在图表内部
+                    color: '#409EFF',
+                    fontSize: 12,
+                    fontWeight: 'bold',
+                    rotate: 0,  // 确保横向显示
+                    offset: [0, -10]  // 向上偏移，显示在均值线顶部附近
                   }
-                }] : []),
+                }
+              ],
+              silent: true
+            }
+          },
+          {
+            name: '质控标准线',
+            type: 'line',
+            data: [legendDummyPoint],  // 虚拟数据点，用于图例显示，位于图表范围外
+            lineStyle: {
+              color: '#F56C6C',
+              type: 'dashed',
+              width: 2
+            },
+            itemStyle: {
+              color: '#F56C6C'
+            },
+            symbol: 'none',  // 不显示数据点标记
+            markLine: {
+              data: qualityControlLine > 0 ? [
                 {
-                  name: '当前患者',
-                  xAxis: this.statisticsData.currentPatientTime || 0,
+                  name: '质控标准线',
+                  xAxis: qualityControlLine,
                   lineStyle: {
                     color: '#F56C6C',
+                    type: 'dashed',
+                    width: 2
+                  },
+                  label: {
+                    show: false  // 不显示标签，由X轴标注显示数值
+                  }
+                }
+              ] : [],
+              silent: true
+            }
+          },
+          // 当前事件线（仅当存在当前患者时间时显示）
+          ...(currentPatientTime != null ? [{
+            name: '当前事件',
+            type: 'line',
+            data: [],  // 空数据，只用于显示markLine
+            lineStyle: {
+              color: '#409EFF',
+              width: 3
+            },
+            markLine: {
+              data: [
+                {
+                  name: '当前事件',
+                  xAxis: currentPatientTime,
+                  lineStyle: {
+                    color: '#409EFF',
                     type: 'solid',
                     width: 3
                   },
                   label: {
-                    formatter: '当前患者: {c} 分钟',
-                    position: 'end'
+                    show: true,
+                    formatter: `当前: ${currentPatientTime.toFixed(2)}`,
+                    position: 'middle',  // 显示在竖线中心
+                    color: '#409EFF',
+                    fontSize: 12,
+                    fontWeight: 'bold',
+                    rotate: 0,
+                    offset: [10, 0]  // 向右偏移，避免与竖线重叠
                   }
                 }
-              ]
+              ],
+              silent: true
             }
-          }
-        ]
+          }] : [])
+        ],
+        graphic: []  // 初始为空，会在渲染后动态添加
       }
       
-      this.chart.setOption(option, true) // 使用true强制重新渲染
+      chart.setOption(option)
       
-      // 强制刷新图表显示
+      // 在图表渲染后，使用graphic组件在X轴底部添加关键点标签
       setTimeout(() => {
-        if (this.chart) {
-          this.chart.resize()
+        try {
+          const graphicLabels = []
+          
+          // 需要添加标注的关键点：-2D、-D、0、均值、+D、+2D（保持在底部）
+          const labelsToAdd = [
+            { value: keyPoints.minus2D, text: '-2D', bottom: '2%' },
+            { value: keyPoints.minusD, text: '-D', bottom: '2%' },
+            { value: keyPoints.zero, text: '0', bottom: '2%' },
+            { value: keyPoints.mean, text: mean.toFixed(2), bottom: '2%' },
+            { value: keyPoints.plusD, text: '+D', bottom: '2%' },
+            { value: keyPoints.plus2D, text: '+2D', bottom: '2%' }
+          ]
+          
+          // 注意：当前患者时间的标注已经在markLine的label中显示在图表内部，不需要添加到底部标注
+          
+          labelsToAdd.forEach(({ value, text, bottom }) => {
+            try {
+              // 确保值在X轴范围内
+              if (value >= xAxisMin && value <= xAxisMax) {
+                const pixelX = chart.convertToPixel({ xAxisIndex: 0 }, value)
+                const chartWidth = chart.getWidth()
+                const leftPercent = ((pixelX / chartWidth) * 100).toFixed(2) + '%'
+                
+                graphicLabels.push({
+                  type: 'text',
+                  id: `label-${text}`,
+                  left: leftPercent,
+                  bottom: bottom || '2%',  // 使用指定的bottom值，默认为2%
+                  style: {
+                    text: text,
+                    fontSize: 12,
+                    fontWeight: 'bold',
+                    fill: '#606266',
+                    textAlign: 'center'
+                  },
+                  z: 100
+                })
+              }
+            } catch (e) {
+              console.warn(`Failed to add label for ${text}:`, e)
+            }
+          })
+          
+          // 如果有需要添加的标签，更新图表
+          if (graphicLabels.length > 0) {
+            chart.setOption({
+              graphic: graphicLabels
+            })
+          }
+        } catch (e) {
+          console.warn('Failed to add graphic labels:', e)
         }
-      }, 50)
-      
-      // 监听窗口大小变化
-      window.addEventListener('resize', this.handleResize)
+      }, 300)
     },
     
-    generateChartData() {
-      if (!this.statisticsData.distributionPoints || this.statisticsData.distributionPoints.length === 0) {
-        return []
+    /**
+     * 计算正态分布概率密度函数 (PDF)
+     */
+    normalPDF(x, mean, stdDev) {
+      if (stdDev <= 0) return 0
+      const coefficient = 1.0 / (stdDev * Math.sqrt(2 * Math.PI))
+      const exponent = -0.5 * Math.pow((x - mean) / stdDev, 2)
+      return coefficient * Math.exp(exponent)
+    },
+    
+    /**
+     * 生成正态分布曲线数据点
+     * @param mean 均值 (μ)
+     * @param stdDev 标准差 (σ)
+     * @param pointCount 数据点数量
+     * @returns 曲线数据点数组 [[x1, y1], [x2, y2], ...]
+     */
+    generateNormalDistributionCurve(mean, stdDev, pointCount = 500) {
+      if (stdDev <= 0) {
+        return [[mean, 1.0]]
       }
       
-      const data = []
-      for (let i = 0; i < 100; i++) {
-        const x = (i - 50) * 2.0 // -100 到 100
-        const y = this.statisticsData.distributionPoints[i] || 0
-        data.push([x, y])
+      // 从 μ-2σ 到 μ+2σ，包含负半轴（不限制最小值）
+      const minX = mean - 2 * stdDev
+      const maxX = mean + 2 * stdDev
+      const step = (maxX - minX) / (pointCount - 1)
+      
+      const curve = []
+      for (let i = 0; i < pointCount; i++) {
+        const x = minX + i * step
+        const y = this.normalPDF(x, mean, stdDev)
+        curve.push([x, y])
       }
       
-      return data
+      return curve
     },
     
     formatEventTime(eventTime) {

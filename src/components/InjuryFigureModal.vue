@@ -23,14 +23,6 @@
 
           <!-- 内容区域 -->
           <div v-else class="modal-body">
-            <!-- 操作按钮区域 -->
-            <div class="action-buttons">
-              <button class="btn-timeline" @click="showTimeline">
-                <i class="el-icon-time"></i>
-                查看干预时间线
-              </button>
-            </div>
-            
             <!-- 受伤等级展示 -->
             <div class="injury-summary">
               <div class="severity-indicator" :class="'severity-' + patient.injurySeverity">
@@ -71,7 +63,7 @@
                   <div class="injury-item-header">
                     <span class="part-name">{{ partNames[partName] }}:</span>
                     <span class="part-level" :style="{ color: getGradientColor(level) }">
-                      {{ level }} ({{ getLevelDescription(level) }})
+                      {{ formatScore(partName) }} ({{ getLevelDescription(level) }})
                     </span>
                   </div>
                   <!-- 显示详细伤情信息 -->
@@ -110,25 +102,11 @@
         </div>
       </div>
     </transition>
-
-    <!-- 时间线弹窗 -->
-    <intervention-timeline-dialog
-      v-if="showTimelineDialog"
-      :patient-id="patient.patientId"
-      @close="closeTimelineDialog"
-    />
   </div>
 </template>
 
 <script>
-// 导入时间线组件
-import InterventionTimelineDialog from './InterventionTimelineDialog.vue';
-
 export default {
-  // 注册组件
-  components: {
-    InterventionTimelineDialog
-  },
   props: {
     patient: {
       type: Object,
@@ -276,10 +254,6 @@ c0-20.855,2.907-41.609,8.636-61.662
         limbs: '四肢',
         body: '体表'
       },
-      // 添加缺失的数据属性
-      showTimelineDialog: false,
-      timelineData: {},
-      timelineLoading: false,
       svgElement: null,
     };
   },
@@ -314,15 +288,68 @@ c0-20.855,2.907-41.609,8.636-61.662
       };
       
       const details = detailsMap[partName];
-      if (!details || details.trim() === '') {
+      // 处理列表类型或字符串类型的详细伤情信息
+      if (!details) {
         return null;
       }
       
-      // 格式化显示详细伤情信息
-      return this.formatInjuryDetails(details);
+      // 如果是数组类型（List<InjuryDetailDTO>）
+      if (Array.isArray(details)) {
+        if (details.length === 0) {
+          return null;
+        }
+        return this.formatInjuryDetailsList(details);
+      }
+      
+      // 如果是字符串类型（兼容旧格式）
+      if (typeof details === 'string' && details.trim() !== '') {
+        return this.formatInjuryDetailsString(details);
+      }
+      
+      return null;
     },
-    formatInjuryDetails(details) {
-      // 将详细伤情信息格式化为HTML显示
+    formatInjuryDetailsList(detailsList) {
+      // 将列表类型的详细伤情信息格式化为HTML显示
+      if (!detailsList || detailsList.length === 0) return '';
+      
+      // 按分数分组
+      const groupedByScore = {};
+      detailsList.forEach(detail => {
+        const score = detail.scoreValue || 0;
+        if (!groupedByScore[score]) {
+          groupedByScore[score] = [];
+        }
+        groupedByScore[score].push(detail);
+      });
+      
+      // 按分数从高到低排序
+      const sortedScores = Object.keys(groupedByScore).sort((a, b) => parseInt(b) - parseInt(a));
+      
+      let formattedHtml = '';
+      sortedScores.forEach(score => {
+        const injuries = groupedByScore[score];
+        const injuryTexts = injuries.map((detail, index) => {
+          const prefix = index === 0 ? '①' : String.fromCharCode(9311 + index); // ①, ②, ③...
+          let text = `${prefix}${detail.injuryName || detail.injuryDescription || ''}`;
+          if (detail.injuryCount && detail.injuryCount > 1) {
+            text += `（${detail.injuryCount}处）`;
+          }
+          if (detail.notes) {
+            text += `：${detail.notes}`;
+          }
+          return text;
+        }).join('，');
+        
+        formattedHtml += `<div class="score-group">
+          <span class="score-badge">${score}分</span>
+          <span class="injuries-list">（${injuryTexts}）</span>
+        </div>`;
+      });
+      
+      return formattedHtml;
+    },
+    formatInjuryDetailsString(details) {
+      // 将字符串类型的详细伤情信息格式化为HTML显示（兼容旧格式）
       // 例如: "3分（①骨盆粉碎性骨折，②股骨骨折），2分（②脱位：肘、手、肩、肩锁关节）"
       if (!details) return '';
       
@@ -347,39 +374,6 @@ c0-20.855,2.907-41.609,8.636-61.662
     closeModal() {
       this.visible = false;
       this.$emit('close');
-    },
-    // 添加缺失的方法实现
-    showTimeline() {
-      this.timelineLoading = true;
-      
-      // 调用API获取干预时间线数据
-      const url = `/api/intervention/patient/${this.patient.patientId}`;
-      this.$axios.get(url)
-        .then(res => {
-          console.log('干预数据:', res.data);
-          
-          // 确保我们获取的是对象而不是数组
-          if (Array.isArray(res.data.data) && res.data.data.length > 0) {
-            this.timelineData = res.data.data[0];
-          } else if (typeof res.data.data === 'object') {
-            this.timelineData = res.data.data;
-          } else {
-            this.timelineData = {};
-          }
-          
-          this.showTimelineDialog = true;
-        })
-        .catch(err => {
-          console.error('请求干预时间失败', err);
-          this.$message.error('获取干预时间失败');
-        })
-        .finally(() => {
-          this.timelineLoading = false;
-        });
-    },
-    
-    closeTimelineDialog() {
-      this.showTimelineDialog = false;
     },
     updateSVGColors() {
       if (!this.svgElement) return;
@@ -482,21 +476,95 @@ c0-20.855,2.907-41.609,8.636-61.662
         }
       }
     },
+    // 获取部位的分数值（数字类型，用于颜色显示和等级判断）
+    // 优先从详细伤情信息中提取，否则从基础分数字段提取
+    getScoreValue(partName) {
+      // 首先检查是否有详细伤情信息
+      const detailsMap = {
+        neck: this.patient.headNeckDetails,
+        face: this.patient.faceDetails,
+        chest: this.patient.chestDetails,
+        abdomen: this.patient.abdomenDetails,
+        limbs: this.patient.limbsDetails,
+        body: this.patient.bodyDetails
+      };
+      
+      const details = detailsMap[partName];
+      
+      // 如果有详细伤情信息，从详细伤情信息中提取分数
+      if (details) {
+        // 如果是数组类型（List<InjuryDetailDTO>）
+        if (Array.isArray(details) && details.length > 0) {
+          // 从详细伤情信息中提取所有分数，取最大值
+          const scores = details
+            .map(detail => detail.scoreValue)
+            .filter(score => score != null && score > 0);
+          if (scores.length > 0) {
+            return Math.max(...scores);
+          }
+        }
+        // 如果是字符串类型（兼容旧格式）
+        if (typeof details === 'string' && details.trim() !== '') {
+          // 从字符串中提取分数，例如 "3分（①...）" 或 "3分（①...），2分（②...）"
+          const scorePattern = /(\d+)分/g;
+          const matches = details.match(scorePattern);
+          if (matches && matches.length > 0) {
+            // 提取所有分数，取最大值
+            const scores = matches.map(m => parseInt(m.replace('分', ''))).filter(n => !isNaN(n) && n > 0);
+            if (scores.length > 0) {
+              return Math.max(...scores);
+            }
+          }
+        }
+      }
+      
+      // 如果没有详细伤情信息，使用基础分数字段
+      const scoreMap = {
+        neck: this.patient.headNeck,
+        face: this.patient.face,
+        chest: this.patient.chest,
+        abdomen: this.patient.abdomen,
+        limbs: this.patient.limbs,
+        body: this.patient.body
+      };
+      
+      const scoreStr = scoreMap[partName];
+      return this.getMaxScore(scoreStr);
+    },
     updateInjuryLevels() {
-      // 更新等级
+      // 更新等级，使用统一的分数提取逻辑（确保颜色和显示数字一致）
       this.injuryLevels = {
-        neck: this.patient.headNeck || 0,
-        face: this.patient.face || 0,
-        chest: this.patient.chest || 0,
-        abdomen: this.patient.abdomen || 0,
-        limbs: this.patient.limbs || 0,
-        body: this.patient.body || 0
+        neck: this.getScoreValue('neck'),
+        face: this.getScoreValue('face'),
+        chest: this.getScoreValue('chest'),
+        abdomen: this.getScoreValue('abdomen'),
+        limbs: this.getScoreValue('limbs'),
+        body: this.getScoreValue('body')
       };
       // 重新加载SVG
       this.svgLoaded = false;
       this.$nextTick(() => {
         this.loadAndColorSVG();
       });
+    },
+    // 从String类型的得分中提取最大值（用于颜色显示）
+    getMaxScore(scoreStr) {
+      if (!scoreStr || scoreStr === '0' || scoreStr.trim() === '') {
+        return 0;
+      }
+      // 处理 "1|2" 格式，提取最大值
+      const scores = scoreStr.split('|').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
+      return scores.length > 0 ? Math.max(...scores) : 0;
+    },
+    // 格式化得分显示（显示原始字符串，如 "1|2"）
+    // 如果有详细伤情信息，从详细伤情信息中提取分数；否则使用基础分数字段
+    formatScore(partName) {
+      // 使用统一的分数提取逻辑
+      const scoreValue = this.getScoreValue(partName);
+      if (scoreValue === 0) {
+        return '0';
+      }
+      return scoreValue.toString();
     },
     fetchInjuryData() {
       // 实现获取伤情数据逻辑
@@ -518,40 +586,6 @@ c0-20.855,2.907-41.609,8.636-61.662
 </script>
 
 <style scoped>
-/* 操作按钮区域 */
-.action-buttons {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 20px;
-  padding: 0 10px;
-}
-
-.btn-timeline {
-  display: flex;
-  align-items: center;
-  padding: 10px 16px;
-  background: linear-gradient(135deg, #409EFF 0%, #64b5ff 100%);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
-}
-
-.btn-timeline:hover {
-  background: linear-gradient(135deg, #64b5ff 0%, #409EFF 100%);
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4);
-  transform: translateY(-2px);
-}
-
-.btn-timeline i {
-  margin-right: 8px;
-  font-size: 16px;
-}
-
-/* 其他样式保持不变 */
 .modal-overlay {
   position: fixed;
   top: 0;

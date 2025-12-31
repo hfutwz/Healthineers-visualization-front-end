@@ -28,7 +28,13 @@
                 <div class="region-total">{{ region.total }}例</div>
               </div>
               <div class="severity-breakdown">
-                <div v-for="severity in region.severities" :key="severity.type" class="severity-item">
+                <div 
+                  v-for="severity in region.severities" 
+                  :key="severity.type" 
+                  class="severity-item"
+                  :class="{ 'clickable': severity.count > 0 }"
+                  @click="severity.count > 0 && handleSeverityClick(getBodyRegionKey(region.name), severity.type)"
+                >
                   <span class="severity-color" :style="{ backgroundColor: severity.color }"></span>
                   <span class="severity-label">{{ severity.name }}:</span>
                   <span class="severity-value">{{ severity.count }}例 ({{ severity.percentage }}%)</span>
@@ -63,15 +69,19 @@ export default {
       type: String,
       default: null
     },
-    season: {
-      type: String,
-      default: 'all'
-    },
     timePeriod: {
       type: String,
       default: 'all'
     },
     year: {
+      type: String,
+      default: null
+    },
+    customStartTime: {
+      type: String,
+      default: null
+    },
+    customEndTime: {
       type: String,
       default: null
     }
@@ -92,12 +102,6 @@ export default {
     window.addEventListener('resize', this.handleResize);
   },
   watch: {
-    season: {
-      handler() {
-        this.loadData();
-      },
-      immediate: false
-    },
     timePeriod: {
       handler() {
         this.loadData();
@@ -121,6 +125,18 @@ export default {
         this.loadData();
       },
       immediate: false
+    },
+    customStartTime: {
+      handler() {
+        this.loadData();
+      },
+      immediate: false
+    },
+    customEndTime: {
+      handler() {
+        this.loadData();
+      },
+      immediate: false
     }
   },
   beforeDestroy() {
@@ -134,13 +150,38 @@ export default {
       this.loading = true;
       console.log('开始加载身体区域损伤数据...');
       try {
-        const params = {
-          season: this.season === 'all' ? null : this.getSeasonValue(this.season),
-          timePeriod: this.timePeriod === 'all' ? null : this.getTimePeriodValue(this.timePeriod),
-          startDate: this.startDate,
-          endDate: this.endDate,
-          year: this.year ? parseInt(this.year) : null
-        };
+        // 构建查询参数，只在有有效值时才添加
+        const params = {};
+        
+        // 添加年份参数（只在有有效值时才添加）
+        if (this.year && this.year !== 'all' && this.year !== '' && this.year != null) {
+          const yearInt = parseInt(this.year);
+          if (!isNaN(yearInt)) {
+            params.year = yearInt;
+          }
+        }
+        
+        // 添加时间段参数（只在有有效值时才添加）
+        if (this.timePeriod && this.timePeriod !== 'all' && this.timePeriod !== '' && this.timePeriod != null) {
+          const timePeriodValue = this.getTimePeriodValue(this.timePeriod);
+          if (timePeriodValue != null) {
+            params.timePeriod = timePeriodValue;
+          }
+        }
+        
+        // 添加日期范围参数（只在有有效值时才添加）
+        if (this.startDate) {
+          params.startDate = this.startDate;
+        }
+        if (this.endDate) {
+          params.endDate = this.endDate;
+        }
+        
+        // 添加自定义时间段参数
+        if (this.customStartTime && this.customEndTime) {
+          params.customStartTime = this.customStartTime;
+          params.customEndTime = this.customEndTime;
+        }
         
         console.log('请求参数:', params);
         console.log('请求URL: /api/patient-statistics/body-region-sunburst');
@@ -255,6 +296,14 @@ export default {
       
       this.chart.setOption(option);
       
+      // 添加点击事件处理
+      this.chart.on('click', (params) => {
+        // 只处理第三层（严重程度）的点击
+        if (params.depth === 2 && params.data && params.data.bodyRegion && params.data.severityLevel) {
+          this.handleSeverityClick(params.data.bodyRegion, params.data.severityLevel);
+        }
+      });
+      
       // 强制重新渲染以确保正确显示
       this.$nextTick(() => {
         if (this.chart) {
@@ -287,17 +336,12 @@ export default {
       
       this.injuryData.forEach(item => {
         const region = item.body_region;
-        const severity = item.severity_level;
+        const severity = item.severity_level; // 后端已返回 'mild', 'moderate', 'severe', 'critical'
         const count = item.injury_count;
         
-        if (regionData[region]) {
-          // 处理复合严重度，将数据同时计入所有相关等级
-          const severityKeys = this.getSeverityKeys(severity);
-          severityKeys.forEach(severityKey => {
-            if (severityKey) {
-              regionData[region][severityKey] += count;
-            }
-          });
+        if (regionData[region] && severity && regionData[region][severity] !== undefined) {
+          // 后端已经按受伤程度分组并去重，直接累加即可
+          regionData[region][severity] += count;
         }
       });
       
@@ -309,60 +353,60 @@ export default {
               name: '头颈部',
               value: this.sumSeverities(regionData.head_neck),
               children: [
-                { name: '轻度', value: regionData.head_neck.mild, itemStyle: { color: '#c6e48b' } },
-                { name: '中度', value: regionData.head_neck.moderate, itemStyle: { color: '#7bc96f' } },
-                { name: '重度', value: regionData.head_neck.severe, itemStyle: { color: '#49af64' } },
-                { name: '无法医治', value: regionData.head_neck.critical, itemStyle: { color: '#239a3b' } }
+                { name: '轻度', value: regionData.head_neck.mild, itemStyle: { color: '#c6e48b' }, bodyRegion: 'head_neck', severityLevel: 'mild' },
+                { name: '中度', value: regionData.head_neck.moderate, itemStyle: { color: '#7bc96f' }, bodyRegion: 'head_neck', severityLevel: 'moderate' },
+                { name: '重度', value: regionData.head_neck.severe, itemStyle: { color: '#49af64' }, bodyRegion: 'head_neck', severityLevel: 'severe' },
+                { name: '无法医治', value: regionData.head_neck.critical, itemStyle: { color: '#239a3b' }, bodyRegion: 'head_neck', severityLevel: 'critical' }
               ]
             },
             {
               name: '面部',
               value: this.sumSeverities(regionData.face),
               children: [
-                { name: '轻度', value: regionData.face.mild, itemStyle: { color: '#c6e48b' } },
-                { name: '中度', value: regionData.face.moderate, itemStyle: { color: '#7bc96f' } },
-                { name: '重度', value: regionData.face.severe, itemStyle: { color: '#49af64' } },
-                { name: '无法医治', value: regionData.face.critical, itemStyle: { color: '#239a3b' } }
+                { name: '轻度', value: regionData.face.mild, itemStyle: { color: '#c6e48b' }, bodyRegion: 'face', severityLevel: 'mild' },
+                { name: '中度', value: regionData.face.moderate, itemStyle: { color: '#7bc96f' }, bodyRegion: 'face', severityLevel: 'moderate' },
+                { name: '重度', value: regionData.face.severe, itemStyle: { color: '#49af64' }, bodyRegion: 'face', severityLevel: 'severe' },
+                { name: '无法医治', value: regionData.face.critical, itemStyle: { color: '#239a3b' }, bodyRegion: 'face', severityLevel: 'critical' }
               ]
             },
             {
               name: '胸部',
               value: this.sumSeverities(regionData.chest),
               children: [
-                { name: '轻度', value: regionData.chest.mild, itemStyle: { color: '#c6e48b' } },
-                { name: '中度', value: regionData.chest.moderate, itemStyle: { color: '#7bc96f' } },
-                { name: '重度', value: regionData.chest.severe, itemStyle: { color: '#49af64' } },
-                { name: '无法医治', value: regionData.chest.critical, itemStyle: { color: '#239a3b' } }
+                { name: '轻度', value: regionData.chest.mild, itemStyle: { color: '#c6e48b' }, bodyRegion: 'chest', severityLevel: 'mild' },
+                { name: '中度', value: regionData.chest.moderate, itemStyle: { color: '#7bc96f' }, bodyRegion: 'chest', severityLevel: 'moderate' },
+                { name: '重度', value: regionData.chest.severe, itemStyle: { color: '#49af64' }, bodyRegion: 'chest', severityLevel: 'severe' },
+                { name: '无法医治', value: regionData.chest.critical, itemStyle: { color: '#239a3b' }, bodyRegion: 'chest', severityLevel: 'critical' }
               ]
             },
             {
               name: '腹部',
               value: this.sumSeverities(regionData.abdomen),
               children: [
-                { name: '轻度', value: regionData.abdomen.mild, itemStyle: { color: '#c6e48b' } },
-                { name: '中度', value: regionData.abdomen.moderate, itemStyle: { color: '#7bc96f' } },
-                { name: '重度', value: regionData.abdomen.severe, itemStyle: { color: '#49af64' } },
-                { name: '无法医治', value: regionData.abdomen.critical, itemStyle: { color: '#239a3b' } }
+                { name: '轻度', value: regionData.abdomen.mild, itemStyle: { color: '#c6e48b' }, bodyRegion: 'abdomen', severityLevel: 'mild' },
+                { name: '中度', value: regionData.abdomen.moderate, itemStyle: { color: '#7bc96f' }, bodyRegion: 'abdomen', severityLevel: 'moderate' },
+                { name: '重度', value: regionData.abdomen.severe, itemStyle: { color: '#49af64' }, bodyRegion: 'abdomen', severityLevel: 'severe' },
+                { name: '无法医治', value: regionData.abdomen.critical, itemStyle: { color: '#239a3b' }, bodyRegion: 'abdomen', severityLevel: 'critical' }
               ]
             },
             {
               name: '四肢',
               value: this.sumSeverities(regionData.limbs),
               children: [
-                { name: '轻度', value: regionData.limbs.mild, itemStyle: { color: '#c6e48b' } },
-                { name: '中度', value: regionData.limbs.moderate, itemStyle: { color: '#7bc96f' } },
-                { name: '重度', value: regionData.limbs.severe, itemStyle: { color: '#49af64' } },
-                { name: '无法医治', value: regionData.limbs.critical, itemStyle: { color: '#239a3b' } }
+                { name: '轻度', value: regionData.limbs.mild, itemStyle: { color: '#c6e48b' }, bodyRegion: 'limbs', severityLevel: 'mild' },
+                { name: '中度', value: regionData.limbs.moderate, itemStyle: { color: '#7bc96f' }, bodyRegion: 'limbs', severityLevel: 'moderate' },
+                { name: '重度', value: regionData.limbs.severe, itemStyle: { color: '#49af64' }, bodyRegion: 'limbs', severityLevel: 'severe' },
+                { name: '无法医治', value: regionData.limbs.critical, itemStyle: { color: '#239a3b' }, bodyRegion: 'limbs', severityLevel: 'critical' }
               ]
             },
             {
               name: '体表',
               value: this.sumSeverities(regionData.body),
               children: [
-                { name: '轻度', value: regionData.body.mild, itemStyle: { color: '#c6e48b' } },
-                { name: '中度', value: regionData.body.moderate, itemStyle: { color: '#7bc96f' } },
-                { name: '重度', value: regionData.body.severe, itemStyle: { color: '#49af64' } },
-                { name: '无法医治', value: regionData.body.critical, itemStyle: { color: '#239a3b' } }
+                { name: '轻度', value: regionData.body.mild, itemStyle: { color: '#c6e48b' }, bodyRegion: 'body', severityLevel: 'mild' },
+                { name: '中度', value: regionData.body.moderate, itemStyle: { color: '#7bc96f' }, bodyRegion: 'body', severityLevel: 'moderate' },
+                { name: '重度', value: regionData.body.severe, itemStyle: { color: '#49af64' }, bodyRegion: 'body', severityLevel: 'severe' },
+                { name: '无法医治', value: regionData.body.critical, itemStyle: { color: '#239a3b' }, bodyRegion: 'body', severityLevel: 'critical' }
               ]
             }
           ]
@@ -390,7 +434,8 @@ export default {
             type: this.getSeverityType(severity.name),
             name: severity.name,
             count: count,
-            percentage: percentage
+            percentage: percentage,
+            color: severity.itemStyle ? severity.itemStyle.color : '#c6e48b'
           };
         });
         
@@ -457,16 +502,6 @@ export default {
       return mapping[severityType] || '';
     },
     
-    getSeasonValue(seasonKey) {
-      const mapping = {
-        'spring': 0,
-        'summer': 1,
-        'autumn': 2,
-        'winter': 3
-      };
-      return mapping[seasonKey];
-    },
-    
     getTimePeriodValue(timePeriodKey) {
       const mapping = {
         'night': 0,
@@ -514,6 +549,106 @@ export default {
         6: 'critical'   // 无法医治
       };
       return mapping[severityNumber] || null; // 返回null表示不显示0分数据
+    },
+    
+    // 获取身体区域的英文键名
+    getBodyRegionKey(regionName) {
+      const mapping = {
+        '头颈部': 'head_neck',
+        '面部': 'face',
+        '胸部': 'chest',
+        '腹部': 'abdomen',
+        '四肢': 'limbs',
+        '体表': 'body'
+      };
+      return mapping[regionName] || '';
+    },
+    
+    // 处理严重程度点击事件
+    async handleSeverityClick(bodyRegion, severityLevel) {
+      if (!bodyRegion || !severityLevel) {
+        return;
+      }
+      
+      try {
+        // 构建查询参数
+        const params = {};
+        
+        // 添加年份参数
+        if (this.year && this.year !== 'all' && this.year !== '' && this.year != null) {
+          const yearInt = parseInt(this.year);
+          if (!isNaN(yearInt)) {
+            params.year = yearInt;
+          }
+        }
+        
+        // 添加时间段参数
+        if (this.timePeriod && this.timePeriod !== 'all' && this.timePeriod !== '' && this.timePeriod != null) {
+          const timePeriodValue = this.getTimePeriodValue(this.timePeriod);
+          if (timePeriodValue != null) {
+            params.timePeriod = timePeriodValue;
+          }
+        }
+        
+        // 添加日期范围参数
+        if (this.startDate) {
+          params.startDate = this.startDate;
+        }
+        if (this.endDate) {
+          params.endDate = this.endDate;
+        }
+        
+        // 添加自定义时间段参数
+        if (this.customStartTime && this.customEndTime) {
+          params.customStartTime = this.customStartTime;
+          params.customEndTime = this.customEndTime;
+        }
+        
+        // 添加身体区域和严重程度参数
+        params.bodyRegion = bodyRegion;
+        params.severityLevel = severityLevel;
+        
+        console.log('请求身体区域+严重程度患者列表，参数:', params);
+        
+        // 调用后端API
+        const response = await axios.get('/api/patient-statistics/body-region-severity-patient-ids', { params });
+        
+        if (response.data.success === true || response.data.code === 200) {
+          const patientIds = response.data.data || [];
+          console.log('获取到的患者ID列表:', patientIds);
+          
+          // 获取身体区域和严重程度的中文名称
+          const regionNameMap = {
+            'head_neck': '头颈部',
+            'face': '面部',
+            'chest': '胸部',
+            'abdomen': '腹部',
+            'limbs': '四肢',
+            'body': '体表'
+          };
+          
+          const severityNameMap = {
+            'mild': '轻度',
+            'moderate': '中度',
+            'severe': '重度',
+            'critical': '无法医治'
+          };
+          
+          const regionName = regionNameMap[bodyRegion] || bodyRegion;
+          const severityName = severityNameMap[severityLevel] || severityLevel;
+          
+          // 触发事件，向父组件传递患者列表数据
+          this.$emit('show-patient-list', {
+            patientIds: patientIds,
+            title: `${regionName} - ${severityName}损伤患者列表`
+          });
+        } else {
+          console.error('获取患者ID列表失败：', response.data.message || response.data.errorMsg);
+        }
+      } catch (error) {
+        console.error('获取患者ID列表失败:', error);
+        console.error('错误详情:', error.response ? error.response.data : error.message);
+      }
     }
   }
 };
@@ -696,6 +831,15 @@ export default {
 .severity-item:hover {
   background: rgba(248, 249, 250, 1);
   transform: translateY(-1px);
+}
+
+.severity-item.clickable {
+  cursor: pointer;
+}
+
+.severity-item.clickable:hover {
+  background: rgba(64, 158, 255, 0.1);
+  border-color: rgba(64, 158, 255, 0.3);
 }
 
 .severity-color {

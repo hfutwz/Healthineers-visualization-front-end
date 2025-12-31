@@ -33,7 +33,7 @@
             <div class="score-item">
               <div class="score-label">GCS评分</div>
               <div class="score-value" :class="getScoreClass(patient.gcsScore)">
-                {{ patient.gcsScore || 'N/A' }}分
+                {{ patient.gcsScore !== null && patient.gcsScore !== undefined ? patient.gcsScore : 'N/A' }}分
               </div>
               <div class="score-description">
                 {{ getGcsDescription(patient.gcsScore) }}
@@ -44,7 +44,7 @@
             <div class="score-item">
               <div class="score-label">收缩压评分</div>
               <div class="score-value" :class="getScoreClass(patient.sbpScore)">
-                {{ patient.sbpScore || 'N/A' }}分
+                {{ patient.sbpScore !== null && patient.sbpScore !== undefined ? patient.sbpScore : 'N/A' }}分
               </div>
               <div class="score-description">
                 {{ getSbpDescription(patient.sbpScore) }}
@@ -55,7 +55,7 @@
             <div class="score-item">
               <div class="score-label">呼吸频率评分</div>
               <div class="score-value" :class="getScoreClass(patient.rrScore)">
-                {{ patient.rrScore || 'N/A' }}分
+                {{ patient.rrScore !== null && patient.rrScore !== undefined ? patient.rrScore : 'N/A' }}分
               </div>
               <div class="score-description">
                 {{ getRrDescription(patient.rrScore) }}
@@ -124,6 +124,9 @@ export default {
 
     // 获取GCS评分描述
     getGcsDescription(score) {
+      if (score === null || score === undefined) {
+        return '未知';
+      }
       const descriptions = {
         4: 'GCS 13-15 (轻度意识障碍)',
         3: 'GCS 9-12 (中度意识障碍)',
@@ -131,11 +134,14 @@ export default {
         1: 'GCS 4-5 (深度昏迷)',
         0: 'GCS 3 (极深度昏迷)'
       };
-      return descriptions[score] || '未知';
+      return descriptions[score] !== undefined ? descriptions[score] : '未知';
     },
 
     // 获取收缩压评分描述
     getSbpDescription(score) {
+      if (score === null || score === undefined) {
+        return '未知';
+      }
       const descriptions = {
         4: 'SBP > 89 (正常血压)',
         3: 'SBP 76-89 (轻度低血压)',
@@ -143,11 +149,14 @@ export default {
         1: 'SBP 1-49 (重度低血压)',
         0: 'SBP 0 (无血压)'
       };
-      return descriptions[score] || '未知';
+      return descriptions[score] !== undefined ? descriptions[score] : '未知';
     },
 
     // 获取呼吸频率评分描述
     getRrDescription(score) {
+      if (score === null || score === undefined) {
+        return '未知';
+      }
       const descriptions = {
         4: 'RR 10-29 (正常呼吸)',
         3: 'RR > 29 (呼吸急促)',
@@ -155,7 +164,7 @@ export default {
         1: 'RR 1-5 (呼吸微弱)',
         0: 'RR 0 (无呼吸)'
       };
-      return descriptions[score] || '未知';
+      return descriptions[score] !== undefined ? descriptions[score] : '未知';
     },
 
 
