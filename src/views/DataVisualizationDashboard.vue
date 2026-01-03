@@ -9,50 +9,51 @@
         </div>
       </div>
       <div class="header-center">
-        <div class="time-display">
-          <i>🕐</i>
-          <span>{{ currentTime }}</span>
-        </div>
-      </div>
-      <div class="header-right">
-        <div class="user-info">
-          <i>👤</i>
-          <span>管理员</span>
-        </div>
-        <div class="system-status">
-          <div class="status-indicator"></div>
-          <span>系统正常</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 顶部筛选栏 -->
-    <div class="filter-bar">
+        <!-- 查询框区域 -->
       <div class="filter-container">
-        <div class="filter-item">
-          <label>时间范围</label>
+          <div class="filter-item filter-item-enhanced">
+            <label class="filter-label">
+              <i class="el-icon-date"></i>
+              日期范围
+            </label>
+            <div class="date-range-wrapper">
           <el-date-picker
             v-model="dateRange"
             type="daterange"
             range-separator="至"
             start-placeholder="开始日期"
             end-placeholder="结束日期"
-            size="small">
+                size="small"
+                class="enhanced-date-picker">
           </el-date-picker>
         </div>
-        <div class="filter-item">
-          <label>季节</label>
-          <el-select v-model="selectedSeason" placeholder="选择季节" size="small">
-            <el-option label="全部" value="all"></el-option>
-            <el-option label="春季(3-5月)" value="spring"></el-option>
-            <el-option label="夏季(6-8月)" value="summer"></el-option>
-            <el-option label="秋季(9-11月)" value="autumn"></el-option>
-            <el-option label="冬季(12-2月)" value="winter"></el-option>
-          </el-select>
+          </div>
+          <div class="filter-item filter-item-enhanced">
+            <label class="filter-label">
+              <i class="el-icon-time"></i>
+              时间范围
+            </label>
+            <div class="time-range-wrapper">
+              <el-time-picker
+                v-model="timeRange"
+                is-range
+                range-separator="至"
+                start-placeholder="开始时间"
+                end-placeholder="结束时间"
+                format="HH:mm"
+                value-format="HH:mm"
+                size="small"
+                class="enhanced-time-picker-range"
+                @change="handleTimeRangeChange">
+              </el-time-picker>
+            </div>
         </div>
         <div class="filter-item">
-          <label>时间段</label>
-          <el-select v-model="selectedTimePeriod" placeholder="选择时间段" size="small">
+            <label class="filter-label">
+              <i class="el-icon-timer"></i>
+              时间段
+            </label>
+            <el-select v-model="selectedTimePeriod" placeholder="选择时间段" size="small" class="enhanced-select">
             <el-option label="全部" value="all"></el-option>
             <el-option label="夜间(00:00-07:59)" value="night"></el-option>
             <el-option label="早高峰(08:00-09:59)" value="morning_peak"></el-option>
@@ -63,8 +64,12 @@
           </el-select>
         </div>
         <div class="filter-item">
-          <label>年份</label>
-          <el-select v-model="selectedYear" placeholder="选择年份" size="small">
+            <label class="filter-label">
+              <i class="el-icon-date"></i>
+              年份
+            </label>
+            <el-select v-model="selectedYear" placeholder="选择年份" size="small" class="enhanced-select">
+              <el-option label="全部" value="all"></el-option>
             <el-option 
               v-for="year in yearOptions" 
               :key="year.value" 
@@ -74,10 +79,17 @@
           </el-select>
         </div>
         <div class="filter-item">
-          <el-button type="primary" size="small" @click="handleQuery" :loading="queryLoading">
+            <el-button type="primary" size="small" @click="handleQuery" :loading="queryLoading" class="query-button">
             <i class="el-icon-search"></i>
             查询数据
           </el-button>
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="time-display">
+          <i>🕐</i>
+          <span>{{ currentTime }}</span>
         </div>
       </div>
     </div>
@@ -110,11 +122,11 @@
           </div>
         </div>
 
-        <div class="stat-card">
-          <div class="stat-icon">✅</div>
+        <div class="stat-card clickable" @click="handleDeathCountClick">
+          <div class="stat-icon">⚠️</div>
           <div class="stat-content">
-            <div class="stat-value">{{ successRate }}%</div>
-            <div class="stat-label">救治成功率</div>
+            <div class="stat-value">{{ deathCount }}</div>
+            <div class="stat-label">死亡人数</div>
           </div>
         </div>
       </div>
@@ -135,8 +147,9 @@
               :selectedYear="selectedYear"
               :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
               :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
-              :season="selectedSeason"
-              :timePeriod="selectedTimePeriod" />
+              :timePeriod="selectedTimePeriod"
+              :customStartTime="customStartTime"
+              :customEndTime="customEndTime" />
           </div>
         </div>
 
@@ -152,9 +165,11 @@
             <ISSDistributionChart 
               :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
               :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
-              :season="selectedSeason"
               :timePeriod="selectedTimePeriod"
-              :year="selectedYear" />
+              :year="selectedYear"
+              :customStartTime="customStartTime"
+              :customEndTime="customEndTime"
+              @show-patient-list="handleShowISSSegmentPatientList" />
           </div>
         </div>
 
@@ -170,9 +185,11 @@
             <GCSDistributionChart 
               :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
               :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
-              :season="selectedSeason"
               :timePeriod="selectedTimePeriod"
-              :year="selectedYear" />
+              :year="selectedYear"
+              :customStartTime="customStartTime"
+              :customEndTime="customEndTime"
+              @show-patient-list="handleShowGCSSegmentPatientList" />
           </div>
         </div>
 
@@ -188,9 +205,11 @@
             <PopulationBodyHeatmapWidget 
               :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
               :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
-              :season="selectedSeason"
               :timePeriod="selectedTimePeriod"
-              :year="selectedYear" />
+              :year="selectedYear"
+              :customStartTime="customStartTime"
+              :customEndTime="customEndTime"
+              @show-patient-list="handleShowBodyPartPatientList" />
           </div>
         </div>
 
@@ -202,8 +221,10 @@
               :selectedYear="selectedYear"
               :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
               :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
-              :season="selectedSeason"
-              :timePeriod="selectedTimePeriod" />
+              :timePeriod="selectedTimePeriod"
+              :customStartTime="customStartTime"
+              :customEndTime="customEndTime"
+              @show-patient-list="handleShowInjuryCausePatientList" />
           </div>
         </div>
 
@@ -219,9 +240,11 @@
             <RTSDistributionChart 
               :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
               :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
-              :season="selectedSeason"
               :timePeriod="selectedTimePeriod"
-              :year="selectedYear" />
+              :year="selectedYear"
+              :customStartTime="customStartTime"
+              :customEndTime="customEndTime"
+              @show-patient-list="handleShowRTSScorePatientList" />
           </div>
         </div>
 
@@ -237,9 +260,11 @@
             <BodyRegionSunburstWidget 
               :startDate="dateRange && dateRange.length === 2 ? dateRange[0] : null"
               :endDate="dateRange && dateRange.length === 2 ? dateRange[1] : null"
-              :season="selectedSeason"
               :timePeriod="selectedTimePeriod"
-              :year="selectedYear" />
+              :year="selectedYear"
+              :customStartTime="customStartTime"
+              :customEndTime="customEndTime"
+              @show-patient-list="handleShowBodyRegionSeverityPatientList" />
           </div>
         </div>
       </div>
@@ -258,6 +283,57 @@
         <span>数据源: 原始excel数据</span>
       </div>
     </div>
+    
+    <!-- 死亡患者列表弹窗 -->
+    <PatientListModal
+      :visible="showDeathPatientModal"
+      :patient-ids="deathPatientIds"
+      @close="closeDeathPatientModal"
+    />
+    
+    <!-- 伤因患者列表弹窗 -->
+    <PatientListModal
+      :visible="showInjuryCausePatientModal"
+      :patient-ids="injuryCausePatientIds"
+      @close="closeInjuryCausePatientModal"
+    />
+    
+    <!-- ISS分段患者列表弹窗 -->
+    <PatientListModal
+      :visible="showISSSegmentPatientModal"
+      :patient-ids="issSegmentPatientIds"
+      @close="closeISSSegmentPatientModal"
+    />
+    
+    <!-- GCS分段患者列表弹窗 -->
+    <PatientListModal
+      :visible="showGCSSegmentPatientModal"
+      :patient-ids="gcsSegmentPatientIds"
+      @close="closeGCSSegmentPatientModal"
+    />
+    
+    <!-- RTS评分患者列表弹窗 -->
+    <PatientListModal
+      :visible="showRTSScorePatientModal"
+      :patient-ids="rtsScorePatientIds"
+      @close="closeRTSScorePatientModal"
+    />
+    
+    <!-- 身体部位患者列表弹窗 -->
+    <PatientListModal
+      :visible="showBodyPartPatientModal"
+      :patient-ids="bodyPartPatientIds"
+      :title="bodyPartPatientModalTitle"
+      @close="closeBodyPartPatientModal"
+    />
+    
+    <!-- 身体区域+严重程度患者列表弹窗 -->
+    <PatientListModal
+      :visible="showBodyRegionSeverityPatientModal"
+      :patient-ids="bodyRegionSeverityPatientIds"
+      :title="bodyRegionSeverityPatientModalTitle"
+      @close="closeBodyRegionSeverityPatientModal"
+    />
   </div>
 </template>
 
@@ -269,6 +345,7 @@ import PopulationBodyHeatmapWidget from '@/components/PopulationBodyHeatmapWidge
 import InjuryCauseDistributionChartCore from '@/components/InjuryCauseDistributionChartCore.vue'
 import RTSDistributionChart from '@/components/RTSDistributionChart.vue'
 import BodyRegionSunburstWidget from '@/components/BodyRegionSunburstWidget.vue'
+import PatientListModal from '@/components/PatientListModal.vue'
 
 export default {
   name: 'DataVisualizationDashboard',
@@ -279,7 +356,8 @@ export default {
     PopulationBodyHeatmapWidget,
     InjuryCauseDistributionChartCore,
     RTSDistributionChart,
-    BodyRegionSunburstWidget
+    BodyRegionSunburstWidget,
+    PatientListModal
   },
   data() {
     return {
@@ -289,19 +367,53 @@ export default {
       
       // 筛选条件 - 使用驾驶舱的数据结构
       dateRange: [],
-      selectedSeason: 'all',
       selectedTimePeriod: 'all',
-      selectedYear: new Date().getFullYear().toString(),
+      selectedYear: 'all',
+      timeRange: null, // 时间范围数组 [startTime, endTime] (HH:mm格式)
+      customStartTime: null, // 时间范围开始时间 (HH:mm格式) - 用于实际查询
+      customEndTime: null, // 时间范围结束时间 (HH:mm格式) - 用于实际查询
       
       // 统计数据
       totalPatients: 0,
       dailyAverage: 0,
       avgInterventionTime: 0,
-      successRate: 0,
+      deathCount: 0,
       onlineUsers: 12,
       
       // 查询状态
-      queryLoading: false
+      queryLoading: false,
+      
+      // 死亡患者列表弹窗
+      showDeathPatientModal: false,
+      deathPatientIds: [],
+      
+      // 伤因患者列表弹窗
+      showInjuryCausePatientModal: false,
+      injuryCausePatientIds: [],
+      injuryCausePatientModalTitle: '',
+      
+      // ISS分段患者列表弹窗
+      showISSSegmentPatientModal: false,
+      issSegmentPatientIds: [],
+      issSegmentPatientModalTitle: '',
+      
+      // GCS分段患者列表弹窗
+      showGCSSegmentPatientModal: false,
+      gcsSegmentPatientIds: [],
+      gcsSegmentPatientModalTitle: '',
+      
+      // RTS评分患者列表弹窗
+      showRTSScorePatientModal: false,
+      rtsScorePatientIds: [],
+      rtsScorePatientModalTitle: '',
+      // 身体部位患者列表弹窗
+      showBodyPartPatientModal: false,
+      bodyPartPatientIds: [],
+      bodyPartPatientModalTitle: '',
+      // 身体区域+严重程度患者列表弹窗
+      showBodyRegionSeverityPatientModal: false,
+      bodyRegionSeverityPatientIds: [],
+      bodyRegionSeverityPatientModalTitle: ''
     }
   },
   
@@ -317,6 +429,36 @@ export default {
         });
       }
       return years.reverse(); // 最新的年份在前
+    },
+  },
+  
+  watch: {
+    // 监听查询条件变化，自动更新顶部统计数据
+    dateRange: {
+      handler() {
+        this.fetchStatistics();
+      },
+      deep: true
+    },
+    selectedTimePeriod: {
+      handler() {
+        this.fetchStatistics();
+      }
+    },
+    selectedYear: {
+      handler() {
+        this.fetchStatistics();
+      }
+    },
+    customStartTime: {
+      handler() {
+        this.fetchStatistics();
+      }
+    },
+    customEndTime: {
+      handler() {
+        this.fetchStatistics();
+      }
     }
   },
   
@@ -339,32 +481,37 @@ export default {
     
      // 获取统计数据
      fetchStatistics() {
-       // 构建查询参数
+       // 构建查询参数，只在有有效值时才添加
        let params = {};
        
        // 如果有日期范围，添加到参数中
-       if (this.dateRange && this.dateRange.length === 2) {
+       if (this.dateRange && this.dateRange.length === 2 && this.dateRange[0] && this.dateRange[1]) {
          params.startDate = this.dateRange[0];
          params.endDate = this.dateRange[1];
        }
        
-       // 添加四个维度的筛选条件
-       if (this.selectedYear && this.selectedYear !== 'all') {
-         params.year = this.selectedYear;
-       }
-       
-       if (this.selectedSeason && this.selectedSeason !== 'all') {
-         params.season = this.selectedSeason;
-       }
-       
-       if (this.selectedTimePeriod && this.selectedTimePeriod !== 'all') {
+      // 添加年份筛选条件（只在有有效值时才添加）
+      if (this.selectedYear && this.selectedYear !== 'all' && this.selectedYear !== '' && this.selectedYear != null) {
+        const yearInt = parseInt(this.selectedYear);
+        if (!isNaN(yearInt)) {
+          params.year = yearInt;
+        }
+      }
+      
+      // 添加时间段筛选条件（只在有有效值时才添加）
+       if (this.selectedTimePeriod && this.selectedTimePeriod !== 'all' && this.selectedTimePeriod !== '' && this.selectedTimePeriod != null) {
          params.timePeriod = this.selectedTimePeriod;
+       }
+       
+      // 添加时间范围筛选条件（只在有有效值时才添加）
+      if (this.customStartTime && this.customEndTime) {
+        params.customStartTime = this.customStartTime;
+        params.customEndTime = this.customEndTime;
        }
        
        console.log('DataVisualizationDashboard: 获取统计数据，参数:', params);
        console.log('DataVisualizationDashboard: 当前筛选条件:', {
          selectedYear: this.selectedYear,
-         selectedSeason: this.selectedSeason,
          selectedTimePeriod: this.selectedTimePeriod,
          dateRange: this.dateRange
        });
@@ -378,13 +525,13 @@ export default {
              this.totalPatients = data.totalPatients || 0;
              this.dailyAverage = Math.round(data.averagePatientsPerDay * 10) / 10;
              this.avgInterventionTime = Math.round(data.averageInterventionTime * 10) / 10;
-             this.successRate = Math.round(data.successRate * 10) / 10;
+             this.deathCount = data.deathCount || 0;
              
              console.log('DataVisualizationDashboard: 统计数据更新完成:', {
                totalPatients: this.totalPatients,
                dailyAverage: this.dailyAverage,
                avgInterventionTime: this.avgInterventionTime,
-               successRate: this.successRate
+               deathCount: this.deathCount
              });
            } else {
              console.warn('DataVisualizationDashboard: 未获取到有效统计数据');
@@ -397,21 +544,56 @@ export default {
      },
 
     // 处理查询按钮点击
+    // 处理时间范围变化，选择完两个时间后自动触发查询
+    handleTimeRangeChange(value) {
+      if (value && value.length === 2 && value[0] && value[1]) {
+        // 将时间范围赋值给实际变量，触发查询
+        this.customStartTime = value[0];
+        this.customEndTime = value[1];
+        
+        console.log('DataVisualizationDashboard: 时间范围已选择，自动触发查询，参数:', {
+          dateRange: this.dateRange,
+          timePeriod: this.selectedTimePeriod,
+          year: this.selectedYear,
+          customStartTime: this.customStartTime,
+          customEndTime: this.customEndTime
+        });
+        
+        // 自动触发查询
+        this.queryLoading = true;
+        this.fetchStatistics();
+        
+        // 设置一个较短的延迟来显示查询完成状态
+        setTimeout(() => {
+          this.queryLoading = false;
+          this.$message.success('数据查询完成！');
+          console.log('DataVisualizationDashboard: 查询完成');
+        }, 1000);
+      } else {
+        // 如果时间范围被清空，也清空查询条件
+        this.customStartTime = null;
+        this.customEndTime = null;
+        this.fetchStatistics();
+      }
+    },
+    
     handleQuery() {
       this.queryLoading = true;
       
       console.log('DataVisualizationDashboard: 开始查询数据，参数:', {
         dateRange: this.dateRange,
-        season: this.selectedSeason,
         timePeriod: this.selectedTimePeriod,
-        year: this.selectedYear
+        year: this.selectedYear,
+        customStartTime: this.customStartTime,
+        customEndTime: this.customEndTime
       });
       
-      // 强制重新获取统计数据（四个变量）
+      // 强制重新获取统计数据
       this.fetchStatistics();
       
       // 其他图表组件会通过props变化自动重新获取数据
       // ISS分布图、GCS分布图、RTS分布图等都会通过watch监听props变化自动重新获取数据
+      // 由于customStartTime和customEndTime已更新，子组件的watch会触发重新获取数据
       
       // 设置一个较短的延迟来显示查询完成状态
       setTimeout(() => {
@@ -426,6 +608,154 @@ export default {
       const now = new Date();
       this.currentTime = now.toLocaleString('zh-CN');
       this.lastUpdateTime = now.toLocaleString('zh-CN');
+    },
+    
+    // 处理死亡人数点击事件
+    async handleDeathCountClick() {
+      if (this.deathCount === 0) {
+        this.$message.info('当前筛选条件下没有死亡患者');
+        return;
+      }
+      
+      // 显示加载提示
+      const loading = this.$loading({
+        lock: true,
+        text: '正在加载死亡患者列表...',
+        spinner: 'el-icon-loading',
+        background: 'rgba(0, 0, 0, 0.7)'
+      });
+      
+      try {
+        // 构建查询参数（与fetchStatistics保持一致），只在有有效值时才添加
+        let params = {};
+        
+        if (this.dateRange && this.dateRange.length === 2 && this.dateRange[0] && this.dateRange[1]) {
+          params.startDate = this.dateRange[0];
+          params.endDate = this.dateRange[1];
+        }
+        
+        if (this.selectedYear && this.selectedYear !== 'all' && this.selectedYear !== '' && this.selectedYear != null) {
+          const yearInt = parseInt(this.selectedYear);
+          if (!isNaN(yearInt)) {
+            params.year = yearInt;
+          }
+        }
+        
+        if (this.selectedTimePeriod && this.selectedTimePeriod !== 'all' && this.selectedTimePeriod !== '' && this.selectedTimePeriod != null) {
+          params.timePeriod = this.selectedTimePeriod;
+        }
+        
+        // 添加时间范围筛选条件
+        if (this.customStartTime && this.customEndTime) {
+          params.customStartTime = this.customStartTime;
+          params.customEndTime = this.customEndTime;
+        }
+        
+        // 调用后端接口获取死亡患者ID列表
+        const res = await this.$axios.get('/api/patient-statistics/death-patient-ids', { params });
+        
+        if (res.data.success && res.data.data) {
+          this.deathPatientIds = res.data.data;
+          this.showDeathPatientModal = true;
+        } else {
+          this.$message.error('获取死亡患者列表失败');
+        }
+      } catch (err) {
+        console.error('获取死亡患者列表失败:', err);
+        this.$message.error('获取死亡患者列表失败: ' + (err.response?.data?.errorMsg || err.message));
+      } finally {
+        loading.close();
+      }
+    },
+    
+    // 关闭死亡患者列表弹窗
+    closeDeathPatientModal() {
+      this.showDeathPatientModal = false;
+      this.deathPatientIds = [];
+    },
+    
+    // 处理显示伤因患者列表
+    handleShowInjuryCausePatientList(data) {
+      this.injuryCausePatientIds = data.patientIds || [];
+      this.injuryCausePatientModalTitle = data.title || '患者列表';
+      this.showInjuryCausePatientModal = true;
+    },
+    
+    // 关闭伤因患者列表弹窗
+    closeInjuryCausePatientModal() {
+      this.showInjuryCausePatientModal = false;
+      this.injuryCausePatientIds = [];
+      this.injuryCausePatientModalTitle = '';
+    },
+    
+    // 处理显示ISS分段患者列表
+    handleShowISSSegmentPatientList(data) {
+      this.issSegmentPatientIds = data.patientIds || [];
+      this.issSegmentPatientModalTitle = data.title || '患者列表';
+      this.showISSSegmentPatientModal = true;
+    },
+    
+    // 关闭ISS分段患者列表弹窗
+    closeISSSegmentPatientModal() {
+      this.showISSSegmentPatientModal = false;
+      this.issSegmentPatientIds = [];
+      this.issSegmentPatientModalTitle = '';
+    },
+    
+    // 处理显示GCS分段患者列表
+    handleShowGCSSegmentPatientList(data) {
+      this.gcsSegmentPatientIds = data.patientIds || [];
+      this.gcsSegmentPatientModalTitle = data.title || '患者列表';
+      this.showGCSSegmentPatientModal = true;
+    },
+    
+    // 关闭GCS分段患者列表弹窗
+    closeGCSSegmentPatientModal() {
+      this.showGCSSegmentPatientModal = false;
+      this.gcsSegmentPatientIds = [];
+      this.gcsSegmentPatientModalTitle = '';
+    },
+    
+    // 处理显示RTS评分患者列表
+    handleShowRTSScorePatientList(data) {
+      this.rtsScorePatientIds = data.patientIds || [];
+      this.rtsScorePatientModalTitle = data.title || '患者列表';
+      this.showRTSScorePatientModal = true;
+    },
+    
+    // 关闭RTS评分患者列表弹窗
+    closeRTSScorePatientModal() {
+      this.showRTSScorePatientModal = false;
+      this.rtsScorePatientIds = [];
+      this.rtsScorePatientModalTitle = '';
+    },
+    
+    // 处理显示身体部位患者列表
+    handleShowBodyPartPatientList(data) {
+      this.bodyPartPatientIds = data.patientIds || [];
+      this.bodyPartPatientModalTitle = data.title || '患者列表';
+      this.showBodyPartPatientModal = true;
+    },
+    
+    // 关闭身体部位患者列表弹窗
+    closeBodyPartPatientModal() {
+      this.showBodyPartPatientModal = false;
+      this.bodyPartPatientIds = [];
+      this.bodyPartPatientModalTitle = '';
+    },
+    
+    // 处理显示身体区域+严重程度患者列表
+    handleShowBodyRegionSeverityPatientList(data) {
+      this.bodyRegionSeverityPatientIds = data.patientIds || [];
+      this.bodyRegionSeverityPatientModalTitle = data.title || '患者列表';
+      this.showBodyRegionSeverityPatientModal = true;
+    },
+    
+    // 关闭身体区域+严重程度患者列表弹窗
+    closeBodyRegionSeverityPatientModal() {
+      this.showBodyRegionSeverityPatientModal = false;
+      this.bodyRegionSeverityPatientIds = [];
+      this.bodyRegionSeverityPatientModalTitle = '';
     }
   }
 }
@@ -452,15 +782,19 @@ export default {
 
 /* 顶部导航栏 */
 .dashboard-header {
-  height: 60px;
+  min-height: 80px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 12px 20px;
   box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
   z-index: 1000;
+}
+
+.header-left {
+  flex-shrink: 0;
 }
 
 .header-left .logo {
@@ -477,91 +811,319 @@ export default {
   margin-right: 10px;
 }
 
-.header-center .time-display {
+.header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 20px;
+}
+
+.header-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.header-right .time-display {
   display: flex;
   align-items: center;
   font-size: 16px;
   color: #666;
+  font-weight: 500;
 }
 
-.header-center .time-display i {
+.header-right .time-display i {
   margin-right: 8px;
   color: #3498db;
+  font-size: 18px;
 }
 
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  color: #666;
-}
-
-.user-info i {
-  margin-right: 5px;
-  color: #3498db;
-}
-
-.system-status {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #27ae60;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-
-/* 顶部筛选栏 */
-.filter-bar {
-  background: linear-gradient(135deg, #1e3c72, #2a5298);
-  padding: 15px 20px;
-  border-bottom: 2px solid rgba(52, 152, 219, 0.3);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  height: 50px;
-}
-
+/* 查询框容器 */
 .filter-container {
   display: flex;
   align-items: center;
-  gap: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .filter-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
-.filter-item label {
-  color: white;
+.filter-item-enhanced {
+  position: relative;
+}
+
+.filter-label {
+  color: #2c3e50;
   font-weight: 500;
   font-size: 14px;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 80px;
+  justify-content: flex-end;
+  transition: all 0.3s ease;
 }
 
-.filter-item .el-date-editor {
-  width: 240px !important;
+.filter-label i {
+  font-size: 16px;
+  color: #3498db;
+  opacity: 0.9;
+  transition: all 0.3s ease;
 }
 
-.filter-item .el-select {
+.filter-item:hover .filter-label i {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* 日期范围包装器 */
+.date-range-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.date-range-wrapper::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 0;
+  background: linear-gradient(180deg, #3498db, #2980b9);
+  border-radius: 2px;
+  transition: height 0.3s ease;
+}
+
+.filter-item-enhanced:hover .date-range-wrapper::before {
+  height: 60%;
+}
+
+.enhanced-date-picker {
+  width: 280px !important;
+  transition: all 0.3s ease;
+}
+
+.enhanced-date-picker :deep(.el-input__inner) {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 2px solid rgba(52, 152, 219, 0.3) !important;
+  border-radius: 8px !important;
+  color: #2c3e50 !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  padding: 8px 12px !important;
+}
+
+.enhanced-date-picker :deep(.el-input__inner):hover {
+  border-color: rgba(52, 152, 219, 0.6) !important;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2) !important;
+  transform: translateY(-1px);
+}
+
+.enhanced-date-picker :deep(.el-input__inner):focus {
+  border-color: #3498db !important;
+  box-shadow: 0 4px 16px rgba(52, 152, 219, 0.3) !important;
+  transform: translateY(-1px);
+}
+
+.enhanced-date-picker :deep(.el-input__icon) {
+  color: #3498db !important;
+  transition: all 0.3s ease !important;
+}
+
+.enhanced-date-picker:hover :deep(.el-input__icon) {
+  transform: scale(1.1);
+}
+
+.enhanced-date-picker :deep(.el-range-separator) {
+  color: #666 !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  min-width: 28px !important;
+  padding: 0 4px !important;
+  text-align: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible !important;
+}
+
+.filter-item-enhanced:hover .enhanced-date-picker :deep(.el-range-separator) {
+  color: #3498db !important;
+  transform: scale(1.1);
+}
+
+/* 时间范围包装器 */
+.time-range-wrapper {
+  position: relative;
+  padding: 2px 0;
+}
+
+.time-range-wrapper::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 0;
+  background: linear-gradient(180deg, #3498db, #2980b9);
+  border-radius: 2px;
+  transition: height 0.3s ease;
+}
+
+.filter-item-enhanced:hover .time-range-wrapper::before {
+  height: 60%;
+}
+
+/* 时间范围选择器样式 */
+.enhanced-time-picker-range {
+  width: 280px !important;
+  transition: all 0.3s ease;
+}
+
+.enhanced-time-picker-range :deep(.el-input__inner) {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 2px solid rgba(52, 152, 219, 0.3) !important;
+  border-radius: 8px !important;
+  color: #2c3e50 !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  padding: 8px 12px !important;
+}
+
+.enhanced-time-picker-range :deep(.el-input__inner):hover {
+  border-color: rgba(52, 152, 219, 0.6) !important;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2) !important;
+  transform: translateY(-1px);
+}
+
+.enhanced-time-picker-range :deep(.el-input__inner):focus {
+  border-color: #3498db !important;
+  box-shadow: 0 4px 16px rgba(52, 152, 219, 0.3) !important;
+  transform: translateY(-1px);
+}
+
+.enhanced-time-picker-range :deep(.el-input__icon) {
+  color: #3498db !important;
+  transition: all 0.3s ease !important;
+}
+
+.enhanced-time-picker-range:hover :deep(.el-input__icon) {
+  transform: scale(1.1);
+}
+
+.enhanced-time-picker-range :deep(.el-range-separator) {
+  color: #666 !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  min-width: 28px !important;
+  padding: 0 4px !important;
+  text-align: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible !important;
+}
+
+.filter-item-enhanced:hover .enhanced-time-picker-range :deep(.el-range-separator) {
+  color: #3498db !important;
+  transform: scale(1.1);
+}
+
+/* 增强的选择器样式 */
+.enhanced-select {
   width: 140px;
+  transition: all 0.3s ease;
+}
+
+.enhanced-select :deep(.el-input__inner) {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 2px solid rgba(52, 152, 219, 0.3) !important;
+  border-radius: 8px !important;
+  color: #2c3e50 !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  padding: 8px 12px !important;
+}
+
+.enhanced-select :deep(.el-input__inner):hover {
+  border-color: rgba(52, 152, 219, 0.6) !important;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2) !important;
+  transform: translateY(-1px);
+}
+
+.enhanced-select :deep(.el-input__inner):focus {
+  border-color: #3498db !important;
+  box-shadow: 0 4px 16px rgba(52, 152, 219, 0.3) !important;
+  transform: translateY(-1px);
+}
+
+.enhanced-select :deep(.el-input__suffix) {
+  color: #3498db !important;
+}
+
+/* 查询按钮样式 */
+.query-button {
+  background: linear-gradient(135deg, #3498db, #2980b9) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 10px 24px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3) !important;
+  transition: all 0.3s ease !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.query-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+
+.query-button:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+.query-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4) !important;
+}
+
+.query-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3) !important;
+}
+
+.query-button i {
+  margin-right: 6px;
+  transition: transform 0.3s ease;
+}
+
+.query-button:hover i {
+  transform: rotate(15deg) scale(1.1);
 }
 
 /* 主要内容区域 */
@@ -598,6 +1160,16 @@ export default {
 .stat-card:hover {
   transform: translateY(-0.5px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+}
+
+.stat-card.clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .stat-icon {

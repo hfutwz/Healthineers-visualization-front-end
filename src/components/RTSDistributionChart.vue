@@ -20,7 +20,7 @@
       <div class="description-area">
         <div class="description-container">
           <div class="description-content">
-            <div v-for="item in filteredChartData" :key="item.name" class="description-item">
+            <div v-for="item in filteredChartData" :key="item.name" class="description-item" @click="handleRTSScoreClick(item)" style="cursor: pointer;">
               <span class="description-color" :style="{ backgroundColor: item.color }"></span>
               <span class="description-label">{{ item.name }}:</span>
               <span class="description-count">{{ item.value }}人 ({{ getPercentageByValue(item.value) }}%)</span>
@@ -54,15 +54,19 @@ export default {
       type: String,
       default: null
     },
-    season: {
-      type: String,
-      default: 'all'
-    },
     timePeriod: {
       type: String,
       default: 'all'
     },
     year: {
+      type: String,
+      default: null
+    },
+    customStartTime: {
+      type: String,
+      default: null
+    },
+    customEndTime: {
       type: String,
       default: null
     }
@@ -78,8 +82,14 @@ export default {
   },
   mounted() {
     console.log('RTS分布图组件已挂载')
-    this.initChart()
-    this.fetchData()
+    // 先初始化图表，再获取数据
+    this.$nextTick(() => {
+      this.initChart()
+      // 等待图表初始化完成后再获取数据
+      setTimeout(() => {
+        this.fetchData()
+      }, 200)
+    })
     // 监听窗口大小变化
     window.addEventListener('resize', this.handleResize)
   },
@@ -93,16 +103,20 @@ export default {
       console.log('endDate变化，重新获取数据')
       this.refreshChart()
     },
-    season() {
-      console.log('season变化，重新获取数据')
-      this.refreshChart()
-    },
     timePeriod() {
       console.log('timePeriod变化，重新获取数据')
       this.refreshChart()
     },
     year() {
       console.log('year变化，重新获取数据')
+      this.refreshChart()
+    },
+    customStartTime() {
+      console.log('customStartTime变化，重新获取数据')
+      this.refreshChart()
+    },
+    customEndTime() {
+      console.log('customEndTime变化，重新获取数据')
       this.refreshChart()
     }
   },
@@ -166,19 +180,11 @@ export default {
         }
         
         // 添加年份参数
-        if (this.year) {
-          params.year = parseInt(this.year)
-        }
-        
-        // 添加季节参数（转换为数字）
-        if (this.season && this.season !== 'all') {
-          const seasonMapping = {
-            'spring': 0,  // 春季
-            'summer': 1,  // 夏季
-            'autumn': 2,  // 秋季
-            'winter': 3   // 冬季
+        if (this.year && this.year !== 'all' && this.year !== '') {
+          const yearInt = parseInt(this.year)
+          if (!isNaN(yearInt)) {
+            params.year = yearInt
           }
-          params.season = seasonMapping[this.season]
         }
         
         // 添加时间段参数（转换为数字）
@@ -194,6 +200,12 @@ export default {
           params.timePeriod = timePeriodMapping[this.timePeriod]
         }
         
+        // 添加自定义时间段参数
+        if (this.customStartTime && this.customEndTime) {
+          params.customStartTime = this.customStartTime
+          params.customEndTime = this.customEndTime
+        }
+        
         console.log('RTS分布查询参数:', params)
         
         const response = await this.$axios.get('/api/patient-statistics/rts-distribution', { params })
@@ -203,55 +215,35 @@ export default {
           const rawData = response.data.data || []
           console.log('原始数据:', rawData)
           
-          // 处理数据，确保有正确的分类 (支持0-12分总分)
-          this.chartData = rawData.map(item => {
-            let name = item.name
-            // 根据RTS总分确定分类 (0-12分)
-            if (name.includes('12') || name.includes('评分12')) {
-              name = 'RTS评分12分'
-            } else if (name.includes('11') || name.includes('评分11')) {
-              name = 'RTS评分11分'
-            } else if (name.includes('10') || name.includes('评分10')) {
-              name = 'RTS评分10分'
-            } else if (name.includes('9') || name.includes('评分9')) {
-              name = 'RTS评分9分'
-            } else if (name.includes('8') || name.includes('评分8')) {
-              name = 'RTS评分8分'
-            } else if (name.includes('7') || name.includes('评分7')) {
-              name = 'RTS评分7分'
-            } else if (name.includes('6') || name.includes('评分6')) {
-              name = 'RTS评分6分'
-            } else if (name.includes('5') || name.includes('评分5')) {
-              name = 'RTS评分5分'
-            } else if (name.includes('4') || name.includes('评分4')) {
-              name = 'RTS评分4分'
-            } else if (name.includes('3') || name.includes('评分3')) {
-              name = 'RTS评分3分'
-            } else if (name.includes('2') || name.includes('评分2')) {
-              name = 'RTS评分2分'
-            } else if (name.includes('1') || name.includes('评分1')) {
-              name = 'RTS评分1分'
-            } else if (name.includes('0') || name.includes('评分0')) {
-              name = 'RTS评分0分'
-            }
-            return {
-              ...item,
-              name: name
-            }
-          })
+          // 后端已经返回了正确的数据格式，直接使用
+          this.chartData = rawData.map(item => ({
+            name: item.name || '',
+            value: item.value || 0,
+            color: item.color || '#666666',
+            percentage: item.percentage || 0
+          }))
           
           // 计算总计
           this.calculateStats()
           
           console.log('处理后的图表数据:', this.chartData)
           
-          // 强制重新初始化图表以确保正确显示
+          // 确保图表实例存在后再更新
           this.$nextTick(() => {
-            if (this.chartInstance) {
-              this.chartInstance.dispose()
-              this.chartInstance = null
+            if (!this.chartInstance && this.$refs.chartContainer) {
+              this.chartInstance = echarts.init(this.$refs.chartContainer)
             }
-            this.initChart()
+            if (this.chartInstance) {
+              this.updateChart()
+            } else {
+              // 如果图表实例仍不存在，延迟重试
+              setTimeout(() => {
+                if (this.$refs.chartContainer) {
+                  this.chartInstance = echarts.init(this.$refs.chartContainer)
+                  this.updateChart()
+                }
+              }, 200)
+            }
           })
         } else {
           this.error = response.data.errorMsg || '获取RTS分布数据失败'
@@ -388,6 +380,116 @@ export default {
       
       // 重新获取数据
       this.fetchData()
+    },
+    
+    // 处理RTS评分点击事件
+    async handleRTSScoreClick(item) {
+      console.log('点击RTS评分:', item)
+      
+      try {
+        // 从item.name中提取RTS分数（例如："RTS评分12分" -> 12）
+        const scoreMatch = item.name.match(/(\d+)分/)
+        if (!scoreMatch) {
+          this.$message.error('无法解析RTS评分')
+          return
+        }
+        
+        const rtsScore = parseInt(scoreMatch[1])
+        if (isNaN(rtsScore)) {
+          this.$message.error('RTS评分格式错误')
+          return
+        }
+        
+        // 构建查询参数
+        const params = {
+          rtsScore: rtsScore
+        }
+        
+        // 添加日期范围参数（转换为字符串格式 YYYY-MM-DD）
+        if (this.startDate) {
+          // 如果是 Date 对象，转换为字符串
+          if (this.startDate instanceof Date) {
+            const year = this.startDate.getFullYear()
+            const month = String(this.startDate.getMonth() + 1).padStart(2, '0')
+            const day = String(this.startDate.getDate()).padStart(2, '0')
+            params.startDate = `${year}-${month}-${day}`
+          } else {
+            params.startDate = this.startDate
+          }
+        }
+        
+        if (this.endDate) {
+          // 如果是 Date 对象，转换为字符串
+          if (this.endDate instanceof Date) {
+            const year = this.endDate.getFullYear()
+            const month = String(this.endDate.getMonth() + 1).padStart(2, '0')
+            const day = String(this.endDate.getDate()).padStart(2, '0')
+            params.endDate = `${year}-${month}-${day}`
+          } else {
+            params.endDate = this.endDate
+          }
+        }
+        
+        // 添加年份参数（只在有有效值时才添加）
+        if (this.year && this.year !== 'all' && this.year !== '' && this.year != null) {
+          const yearInt = parseInt(this.year)
+          if (!isNaN(yearInt)) {
+            params.year = yearInt
+          }
+        }
+        
+        // 添加时间段参数（转换为数字）
+        if (this.timePeriod && this.timePeriod !== 'all') {
+          const timePeriodMapping = {
+            'night': 0,           // 夜间
+            'morning_peak': 1,    // 早高峰
+            'noon_peak': 2,       // 午高峰
+            'afternoon': 3,       // 下午
+            'evening_peak': 4,    // 晚高峰
+            'evening': 5          // 晚上
+          }
+          params.timePeriod = timePeriodMapping[this.timePeriod]
+        }
+        
+        // 添加自定义时间段参数
+        if (this.customStartTime && this.customEndTime) {
+          params.customStartTime = this.customStartTime
+          params.customEndTime = this.customEndTime
+        }
+        
+        console.log('RTS评分查询参数:', params)
+        
+        // 调用API获取患者ID列表
+        const response = await this.$axios.get('/api/patient-statistics/rts-score-patient-ids', { params })
+        console.log('RTS评分患者ID列表请求成功:', response.data)
+        
+        if (response.data.success) {
+          const patientIds = response.data.data || []
+          
+          // 构建标题
+          const title = `${item.name}患者列表`
+          
+          // 发送事件给父组件
+          this.$emit('show-patient-list', {
+            patientIds: patientIds,
+            title: title
+          })
+        } else {
+          this.$message.error(response.data.errorMsg || '获取患者列表失败')
+        }
+      } catch (error) {
+        console.error('获取RTS评分患者列表失败:', error)
+        console.error('错误详情:', {
+          message: error.message,
+          response: error.response,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          url: error.config?.url,
+          params: error.config?.params
+        })
+        const errorMsg = error.response?.data?.errorMsg || error.response?.statusText || error.message
+        this.$message.error('获取患者列表失败: ' + errorMsg)
+      }
     }
   }
 }
@@ -501,6 +603,7 @@ export default {
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .description-item:hover {

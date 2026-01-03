@@ -19,10 +19,12 @@ module.exports = {
     devServer: {
         // host: "localhost",
         open: true,
-        port: 8002,
+        port: 8001,
+        historyApiFallback: true,
         proxy: {
             '/api': {
-                target: 'http://localhost:8080',
+                // 开发环境使用环境变量配置的API地址，如果没有则使用默认值
+                target: process.env.VUE_APP_API_BASE_URL || 'http://localhost:9090',
                 changeOrigin: true,
                 // 如果后端有 context-path，可在此重写
                 pathRewrite: { '^/api': '/api' },

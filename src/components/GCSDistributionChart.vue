@@ -20,25 +20,25 @@
       <div class="description-area">
         <div class="description-container">
           <div class="description-content">
-            <div class="description-item">
+            <div class="description-item" @click="handleGCSSegmentClick('clear')" style="cursor: pointer;">
               <span class="description-color" style="background-color: #52C41A;"></span>
               <span class="description-label">意识清楚:</span>
               <span class="description-text">15分</span>
               <span class="description-count" v-if="getCountByColor('#52C41A')">{{ getCountByColor('#52C41A') }}人 ({{ getPercentageByColor('#52C41A') }}%)</span>
             </div>
-            <div class="description-item">
+            <div class="description-item" @click="handleGCSSegmentClick('mild')" style="cursor: pointer;">
               <span class="description-color" style="background-color: #1890FF;"></span>
               <span class="description-label">轻度意识障碍:</span>
               <span class="description-text">12-14分</span>
               <span class="description-count" v-if="getCountByColor('#1890FF')">{{ getCountByColor('#1890FF') }}人 ({{ getPercentageByColor('#1890FF') }}%)</span>
             </div>
-            <div class="description-item">
+            <div class="description-item" @click="handleGCSSegmentClick('moderate')" style="cursor: pointer;">
               <span class="description-color" style="background-color: #FA8C16;"></span>
               <span class="description-label">中度意识障碍:</span>
               <span class="description-text">9-11分</span>
               <span class="description-count" v-if="getCountByColor('#FA8C16')">{{ getCountByColor('#FA8C16') }}人 ({{ getPercentageByColor('#FA8C16') }}%)</span>
             </div>
-            <div class="description-item">
+            <div class="description-item" @click="handleGCSSegmentClick('coma')" style="cursor: pointer;">
               <span class="description-color" style="background-color: #F5222D;"></span>
               <span class="description-label">昏迷:</span>
               <span class="description-text">3-8分</span>
@@ -73,15 +73,19 @@ export default {
       type: String,
       default: null
     },
-    season: {
-      type: String,
-      default: 'all'
-    },
     timePeriod: {
       type: String,
       default: 'all'
     },
     year: {
+      type: String,
+      default: null
+    },
+    customStartTime: {
+      type: String,
+      default: null
+    },
+    customEndTime: {
       type: String,
       default: null
     }
@@ -113,16 +117,20 @@ export default {
       console.log('endDate变化，重新获取数据')
       this.refreshChart()
     },
-    season() {
-      console.log('season变化，重新获取数据')
-      this.refreshChart()
-    },
     timePeriod() {
       console.log('timePeriod变化，重新获取数据')
       this.refreshChart()
     },
     year() {
       console.log('year变化，重新获取数据')
+      this.refreshChart()
+    },
+    customStartTime() {
+      console.log('customStartTime变化，重新获取数据')
+      this.refreshChart()
+    },
+    customEndTime() {
+      console.log('customEndTime变化，重新获取数据')
       this.refreshChart()
     }
   },
@@ -180,19 +188,11 @@ export default {
         }
         
         // 添加年份参数
-        if (this.year) {
-          params.year = parseInt(this.year)
-        }
-        
-        // 添加季节参数（转换为数字）
-        if (this.season && this.season !== 'all') {
-          const seasonMapping = {
-            'spring': 0,  // 春季
-            'summer': 1,  // 夏季
-            'autumn': 2,  // 秋季
-            'winter': 3   // 冬季
+        if (this.year && this.year !== 'all' && this.year !== '') {
+          const yearInt = parseInt(this.year)
+          if (!isNaN(yearInt)) {
+            params.year = yearInt
           }
-          params.season = seasonMapping[this.season]
         }
         
         // 添加时间段参数（转换为数字）
@@ -206,6 +206,12 @@ export default {
             'evening': 5          // 晚上
           }
           params.timePeriod = timePeriodMapping[this.timePeriod]
+        }
+        
+        // 添加自定义时间段参数
+        if (this.customStartTime && this.customEndTime) {
+          params.customStartTime = this.customStartTime
+          params.customEndTime = this.customEndTime
         }
         
         console.log('GCS分布查询参数:', params)
@@ -377,6 +383,112 @@ export default {
       
       // 重新获取数据
       this.fetchData()
+    },
+    
+    // 处理GCS分段点击事件
+    async handleGCSSegmentClick(segmentType) {
+      console.log('点击GCS分段:', segmentType)
+      
+      try {
+        // 构建查询参数
+        const params = {
+          gcsSegment: segmentType
+        }
+        
+        // 添加日期范围参数（转换为字符串格式 YYYY-MM-DD）
+        if (this.startDate) {
+          // 如果是 Date 对象，转换为字符串
+          if (this.startDate instanceof Date) {
+            const year = this.startDate.getFullYear()
+            const month = String(this.startDate.getMonth() + 1).padStart(2, '0')
+            const day = String(this.startDate.getDate()).padStart(2, '0')
+            params.startDate = `${year}-${month}-${day}`
+          } else {
+            params.startDate = this.startDate
+          }
+        }
+        
+        if (this.endDate) {
+          // 如果是 Date 对象，转换为字符串
+          if (this.endDate instanceof Date) {
+            const year = this.endDate.getFullYear()
+            const month = String(this.endDate.getMonth() + 1).padStart(2, '0')
+            const day = String(this.endDate.getDate()).padStart(2, '0')
+            params.endDate = `${year}-${month}-${day}`
+          } else {
+            params.endDate = this.endDate
+          }
+        }
+        
+        // 添加年份参数（只在有有效值时才添加）
+        if (this.year && this.year !== 'all' && this.year !== '' && this.year != null) {
+          const yearInt = parseInt(this.year)
+          if (!isNaN(yearInt)) {
+            params.year = yearInt
+          }
+        }
+        
+        // 添加时间段参数（转换为数字）
+        if (this.timePeriod && this.timePeriod !== 'all') {
+          const timePeriodMapping = {
+            'night': 0,           // 夜间
+            'morning_peak': 1,    // 早高峰
+            'noon_peak': 2,       // 午高峰
+            'afternoon': 3,       // 下午
+            'evening_peak': 4,    // 晚高峰
+            'evening': 5          // 晚上
+          }
+          params.timePeriod = timePeriodMapping[this.timePeriod]
+        }
+        
+        // 添加自定义时间段参数
+        if (this.customStartTime && this.customEndTime) {
+          params.customStartTime = this.customStartTime
+          params.customEndTime = this.customEndTime
+        }
+        
+        console.log('GCS分段查询参数:', params)
+        
+        // 调用API获取患者ID列表
+        const response = await this.$axios.get('/api/patient-statistics/gcs-segment-patient-ids', { params })
+        console.log('GCS分段患者ID列表请求成功:', response.data)
+        
+        if (response.data.success) {
+          const patientIds = response.data.data || []
+          
+          // 构建标题
+          let title = ''
+          if (segmentType === 'clear') {
+            title = '意识清楚患者列表 (15分)'
+          } else if (segmentType === 'mild') {
+            title = '轻度意识障碍患者列表 (12-14分)'
+          } else if (segmentType === 'moderate') {
+            title = '中度意识障碍患者列表 (9-11分)'
+          } else if (segmentType === 'coma') {
+            title = '昏迷患者列表 (3-8分)'
+          }
+          
+          // 发送事件给父组件
+          this.$emit('show-patient-list', {
+            patientIds: patientIds,
+            title: title
+          })
+        } else {
+          this.$message.error(response.data.errorMsg || '获取患者列表失败')
+        }
+      } catch (error) {
+        console.error('获取GCS分段患者列表失败:', error)
+        console.error('错误详情:', {
+          message: error.message,
+          response: error.response,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          url: error.config?.url,
+          params: error.config?.params
+        })
+        const errorMsg = error.response?.data?.errorMsg || error.response?.statusText || error.message
+        this.$message.error('获取患者列表失败: ' + errorMsg)
+      }
     }
   }
 }
@@ -483,7 +595,7 @@ export default {
 
 .description-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   padding: 4px 6px;
   background: rgba(255, 255, 255, 0.7);

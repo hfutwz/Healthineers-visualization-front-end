@@ -44,6 +44,7 @@
               :class="{ highlighted: highlightedPart === part.body_part }"
               @mouseenter="highlightPart(part.body_part)"
               @mouseleave="unhighlightPart"
+              @click="handlePartClick(part)"
             >
               <div class="part-header">
                 <span class="part-name">{{ getPartName(part.body_part) }}</span>
@@ -83,15 +84,19 @@ export default {
       type: String,
       default: null
     },
-    season: {
-      type: String,
-      default: null
-    },
     timePeriod: {
       type: String,
       default: null
     },
     year: {
+      type: String,
+      default: null
+    },
+    customStartTime: {
+      type: String,
+      default: null
+    },
+    customEndTime: {
       type: String,
       default: null
     }
@@ -233,17 +238,22 @@ c0-20.855,2.907-41.609,8.636-61.662
         this.fetchHeatmapData();
       }
     },
-    season: {
-      handler() {
-        this.fetchHeatmapData();
-      }
-    },
     timePeriod: {
       handler() {
         this.fetchHeatmapData();
       }
     },
     year: {
+      handler() {
+        this.fetchHeatmapData();
+      }
+    },
+    customStartTime: {
+      handler() {
+        this.fetchHeatmapData();
+      }
+    },
+    customEndTime: {
       handler() {
         this.fetchHeatmapData();
       }
@@ -273,20 +283,12 @@ c0-20.855,2.907-41.609,8.636-61.662
         // 构建查询参数，使用props中的值
         const params = {};
         
-        // 处理年份参数
-        if (this.year && this.year !== 'all' && this.year !== '') {
-          params.year = parseInt(this.year);
-        }
-        
-        // 处理季节参数
-        if (this.season && this.season !== 'all') {
-          const seasonMapping = {
-            'spring': 0,  // 春季
-            'summer': 1,  // 夏季
-            'autumn': 2,  // 秋季
-            'winter': 3   // 冬季
-          };
-          params.season = seasonMapping[this.season];
+        // 处理年份参数（只在有有效值时才添加）
+        if (this.year && this.year !== 'all' && this.year !== '' && this.year != null) {
+          const yearInt = parseInt(this.year);
+          if (!isNaN(yearInt)) {
+            params.year = yearInt;
+          }
         }
         
         // 处理时间段参数
@@ -308,6 +310,12 @@ c0-20.855,2.907-41.609,8.636-61.662
         }
         if (this.endDate && this.endDate !== '') {
           params.endDate = this.endDate;
+        }
+        
+        // 添加自定义时间段参数
+        if (this.customStartTime && this.customEndTime) {
+          params.customStartTime = this.customStartTime;
+          params.customEndTime = this.customEndTime;
         }
         
         console.log('发送热力图查询请求，参数:', params);
@@ -435,6 +443,7 @@ c0-20.855,2.907-41.609,8.636-61.662
         // 绑定事件
         container.addEventListener('mouseover', this.handleSvgMouseOver);
         container.addEventListener('mouseout', this.handleSvgMouseOut);
+        container.addEventListener('click', this.handleSvgClick);
         
       } catch (e) {
         console.error("加载SVG出错：", e);
@@ -463,6 +472,124 @@ c0-20.855,2.907-41.609,8.636-61.662
     // SVG鼠标离开事件
     handleSvgMouseOut() {
       this.unhighlightPart();
+    },
+    
+    // SVG点击事件
+    handleSvgClick(event) {
+      const target = event.target;
+      let bodyPart = null;
+      
+      if (target.classList.contains('face')) {
+        bodyPart = 'face';
+      } else if (target.classList.contains('neck')) {
+        bodyPart = 'head_neck';
+      } else if (target.classList.contains('chest')) {
+        bodyPart = 'chest';
+      } else if (target.classList.contains('abdomen')) {
+        bodyPart = 'abdomen';
+      } else if (target.classList.contains('limbs')) {
+        bodyPart = 'limbs';
+      } else if (target.classList.contains('body')) {
+        bodyPart = 'body';
+      }
+      
+      if (bodyPart) {
+        this.handleBodyPartClick(bodyPart);
+      }
+    },
+    
+    // 处理部位数据项点击
+    async handlePartClick(part) {
+      await this.handleBodyPartClick(part.body_part);
+    },
+    
+    // 处理身体部位点击
+    async handleBodyPartClick(bodyPart) {
+      console.log('点击身体部位:', bodyPart);
+      
+      try {
+        // 构建查询参数
+        const params = {
+          bodyPart: bodyPart
+        };
+        
+        // 添加日期范围参数（转换为字符串格式 YYYY-MM-DD）
+        if (this.startDate) {
+          // 如果是 Date 对象，转换为字符串
+          if (this.startDate instanceof Date) {
+            const year = this.startDate.getFullYear();
+            const month = String(this.startDate.getMonth() + 1).padStart(2, '0');
+            const day = String(this.startDate.getDate()).padStart(2, '0');
+            params.startDate = `${year}-${month}-${day}`;
+          } else {
+            params.startDate = this.startDate;
+          }
+        }
+        
+        if (this.endDate) {
+          // 如果是 Date 对象，转换为字符串
+          if (this.endDate instanceof Date) {
+            const year = this.endDate.getFullYear();
+            const month = String(this.endDate.getMonth() + 1).padStart(2, '0');
+            const day = String(this.endDate.getDate()).padStart(2, '0');
+            params.endDate = `${year}-${month}-${day}`;
+          } else {
+            params.endDate = this.endDate;
+          }
+        }
+        
+        // 添加年份参数（只在有有效值时才添加）
+        if (this.year && this.year !== 'all' && this.year !== '' && this.year != null) {
+          const yearInt = parseInt(this.year);
+          if (!isNaN(yearInt)) {
+            params.year = yearInt;
+          }
+        }
+        
+        // 添加时间段参数（转换为数字）
+        if (this.timePeriod && this.timePeriod !== 'all') {
+          const timePeriodMapping = {
+            'night': 0,           // 夜间
+            'morning_peak': 1,    // 早高峰
+            'noon_peak': 2,       // 午高峰
+            'afternoon': 3,       // 下午
+            'evening_peak': 4,    // 晚高峰
+            'evening': 5          // 晚上
+          };
+          params.timePeriod = timePeriodMapping[this.timePeriod];
+        }
+        
+        // 添加自定义时间段参数
+        if (this.customStartTime && this.customEndTime) {
+          params.customStartTime = this.customStartTime;
+          params.customEndTime = this.customEndTime;
+        }
+        
+        console.log('身体部位查询参数:', params);
+        
+        // 调用API获取患者ID列表
+        const response = await this.$axios.get('/api/patient-statistics/body-part-patient-ids', { params });
+        console.log('身体部位患者ID列表请求成功:', response.data);
+        
+        if (response.data.success) {
+          const patientIds = response.data.data || [];
+          
+          // 构建标题
+          const partName = this.getPartName(bodyPart);
+          const title = `${partName}损伤患者列表`;
+          
+          // 发送事件给父组件
+          this.$emit('show-patient-list', {
+            patientIds: patientIds,
+            title: title
+          });
+        } else {
+          this.$message.error(response.data.errorMsg || '获取患者列表失败');
+        }
+      } catch (error) {
+        console.error('获取身体部位患者列表失败:', error);
+        this.$message.error('获取患者列表失败: ' + (error.response?.data?.errorMsg || error.message));
+      }
     }
   },
   mounted() {
@@ -556,6 +683,16 @@ c0-20.855,2.907-41.609,8.636-61.662
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+}
+
+.human-figure svg path {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.human-figure svg path:hover {
+  opacity: 0.8;
 }
 
 .svg-placeholder {
@@ -664,6 +801,7 @@ c0-20.855,2.907-41.609,8.636-61.662
   border: 1px solid rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
   cursor: pointer;
+  user-select: none;
 }
 
 .part-item:hover {
